@@ -9,23 +9,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
         #auth_gate { position: fixed; inset: 0; background: #1a6d44; display: flex; align-items: center; justify-content: center; z-index: 10000; }
         .gate-box { background: #fff; padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.2); width: 90%; max-width: 380px; }
         .main-ui { display: none; padding: 15px; }
         .navbar { background: #1a6d44; color: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 15px 15px; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .v-count { background: #ffd700; color: #000; padding: 6px 15px; border-radius: 20px; font-weight: bold; }
         .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: #fff; border-radius: 12px; padding: 18px; border-right: 8px solid #1a6d44; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; }
+        .card { background: #fff; border-radius: 12px; padding: 18px; border-right: 8px solid #7f8c8d; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; }
         .card-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #f5f5f5; padding-bottom: 5px; }
         .label { color: #888; font-size: 13px; }
         .value { font-weight: bold; color: #333; font-size: 15px; }
         .actions { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-ctl { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        .btn-accept { background: #28a745; }
-        .btn-reject { background: #dc3545; }
+        
+        /* الزراير باللون الرمادي كما طلبت يا بشمهندس */
+        .btn-ctl { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-gray { background: #7f8c8d; } 
+        .btn-gray:hover { background: #95a5a6; }
+        
         .btn-pdf { background: #e74c3c; color: #fff; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .status-tag { background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 5px; font-size: 12px; }
+        .status-tag { background: #eee; color: #555; padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body onload="_checkLogin()">
@@ -34,25 +37,25 @@
 
 <div id="auth_gate">
     <div class="gate-box">
-        <h2 style="color:#1a6d44; margin-top:0;">دخول الإدارة</h2>
+        <h2 style="color:#1a6d44; margin-top:0;">نظام التحكم الآمن</h2>
         <input type="password" id="pass_input" placeholder="كلمة المرور" style="width:100%; padding:15px; border:1px solid #ddd; border-radius:8px; text-align:center; font-size:20px; box-sizing:border-box;">
         <br><br>
-        <button onclick="_doLogin()" style="width:100%; padding:15px; background:#1a6d44; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px;">دخول الآن</button>
+        <button onclick="_doLogin()" style="width:100%; padding:15px; background:#1a6d44; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px;">دخول</button>
     </div>
 </div>
 
 <div id="dashboard_wrap" class="main-ui">
     <div class="navbar">
-        <div class="v-count">آخر 10 طلبات: <span id="total_count">0</span></div>
-        <button class="btn-pdf" onclick="_exportAndClear()">تصدير PDF وتفريغ</button>
+        <div class="v-count">آخر العمليات: <span id="total_count">0</span></div>
+        <button class="btn-pdf" onclick="_exportAndClear()">تصدير PDF وتفريغ القاعدة</button>
         <button onclick="_logout()" style="background:#333; color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">خروج</button>
     </div>
     <div class="cards-grid" id="orders_list"></div>
 </div>
 
 <script>
-    const PASS = "H1234567890H"; // كلمة السر اللي طلبتها يا بشمهندس
-    const SESSION_KEY = "saso_admin_v10";
+    const PASS = "H1234567890H"; 
+    const SESSION_KEY = "saso_admin_final";
     let database;
 
     function _checkLogin() {
@@ -64,7 +67,7 @@
             sessionStorage.setItem(SESSION_KEY, "true");
             _showDash();
         } else {
-            alert("كلمة المرور خطأ!");
+            alert("كلمة المرور غير صحيحة");
         }
     }
 
@@ -80,7 +83,6 @@
     }
 
     function _initFirebase() {
-        // تم مطابقة البيانات مع الكود الذي أرسلته يا بشمهندس
         const config = {
             apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8",
             databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com",
@@ -89,7 +91,7 @@
         if (!firebase.apps.length) firebase.initializeApp(config);
         database = firebase.database();
 
-        // جلب آخر 10 عمليات فقط لضمان السرعة (كما طلبت)
+        // جلب آخر 10 طلبات فقط لتبقى اللوحة خفيفة [cite: 2026-02-22]
         database.ref('orders').limitToLast(10).on('value', snapshot => {
             const list = document.getElementById('orders_list');
             list.innerHTML = '';
@@ -102,16 +104,16 @@
 
                 const html = `
                     <div class="card">
-                        <div class="card-row"><span class="label">الاسم الكامل</span><span class="value">${data.fullName || '---'}</span></div>
+                        <div class="card-row"><span class="label">اسم العميل</span><span class="value">${data.fullName || '---'}</span></div>
                         <div class="card-row"><span class="label">رقم الهوية</span><span class="value">${data.idNumber || '---'}</span></div>
                         <div class="card-row"><span class="label">رقم الجوال</span><span class="value">${data.phone || '---'}</span></div>
-                        <div class="card-row"><span class="label">مركز الفحص</span><span class="value">${data.center || '---'}</span></div>
-                        <div class="card-row"><span class="label">الموعد</span><span class="value">${data.dateTime || '---'}</span></div>
-                        <div class="card-row"><span class="label">الحالة</span><span class="status-tag">${data.status || 'نشط'}</span></div>
+                        <div class="card-row"><span class="label">المركز</span><span class="value">${data.center || '---'}</span></div>
+                        <div class="card-row"><span class="label">الموعد المختصر</span><span class="value">${data.dateTime || '---'}</span></div>
+                        <div class="card-row"><span class="label">حالة الطلب</span><span class="status-tag">${data.status || 'في الانتظار'}</span></div>
                         
                         <div class="actions">
-                            <button class="btn-ctl btn-accept" onclick="_updateStatus('${id}', 'Accepted')">قبول ✅</button>
-                            <button class="btn-ctl btn-reject" onclick="_updateStatus('${id}', 'Rejected')">رفض ❌</button>
+                            <button class="btn-ctl btn-gray" onclick="_updateAction('${id}', 'next')">موافقة (رمادي) ⚪</button>
+                            <button class="btn-ctl btn-gray" onclick="_updateAction('${id}', 'error')">إلغاء (رمادي) ⚪</button>
                         </div>
                     </div>
                 `;
@@ -122,18 +124,18 @@
         });
     }
 
-    function _updateStatus(id, stat) {
-        database.ref('orders/' + id).update({ status: stat });
+    function _updateAction(id, action) {
+        database.ref('orders/' + id).update({ control_action: action });
     }
 
     async function _exportAndClear() {
         const element = document.getElementById('orders_list');
-        if(!element.children.length) return alert("لا توجد بيانات لتصديرها");
+        if(!element.children.length) return alert("لا توجد بيانات");
         
-        if(confirm("هل تريد تحميل التقرير PDF ومسح كافة البيانات القديمة؟")) {
-            const opt = { margin: 10, filename: 'Hasan_Reports.pdf', image: { type: 'jpeg' }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
+        if(confirm("تحميل التقرير ومسح الداتا القديمة؟")) {
+            const opt = { margin: 10, filename: 'Traffic_Report.pdf', image: { type: 'jpeg' }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
             html2pdf().set(opt).from(element).save().then(() => {
-                database.ref('orders').remove(); // تفريغ القاعدة تماماً
+                database.ref('orders').remove(); 
             });
         }
     }
