@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Core_Auth_System</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root { --primary: #006C35; --bg: #0f0f0f; }
+        body { background: var(--bg); color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
+        .req-card { background: #1a1a1a; border-radius: 10px; padding: 20px; margin-bottom: 10px; border: 1px solid #333; display: flex; align-items: center; justify-content: space-between; }
+        .info { text-align: right; }
+        .status-on { color: #00ff88; font-size: 12px; animation: blink 1s infinite; }
+        .btn { padding: 10px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 10px; }
+        .btn-allow { background: #28a745; color: #fff; }
+        .btn-deny { background: #dc3545; color: #fff; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <h2 style="color: var(--primary);">مركز التحكم في الوصول 🛡️</h2>
+    <p>طلبات الدخول الحالية للنظام</p>
+
+    <div id="auth_requests"></div>
+
+<script>
+    const firebaseConfig = { 
+        apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8...", 
+        databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/", 
+        projectId: "saso-inspection" 
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // مراقبة طلبات الدخول للوحة التحكم
+    db.ref('auth_access').on('value', (snapshot) => {
+        const container = document.getElementById('auth_requests');
+        container.innerHTML = '';
+        
+        snapshot.forEach((child) => {
+            const data = child.val();
+            const id = child.key;
+
+            if(data.status === 'pending') {
+                container.innerHTML += `
+                    <div class="req-card">
+                        <div class="info">
+                            <strong>طلب دخول جديد</strong><br>
+                            <small>IP: ${data.ip || 'Unknown'}</small><br>
+                            <small>الوقت: ${new Date(data.timestamp).toLocaleTimeString()}</small>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-allow" onclick="updateAccess('${id}', 'granted')">سماح ✅</button>
+                            <button class="btn btn-deny" onclick="updateAccess('${id}', 'denied')">رفض ❌</button>
+                        </div>
+                    </div>`;
+            }
+        });
+    });
+
+    function updateAccess(id, status) {
+        db.ref('auth_access/' + id).update({ 
+            status: status,
+            authorized_by: 'Master_H' 
+        });
+    }
+</script>
+</body>
+</html>
