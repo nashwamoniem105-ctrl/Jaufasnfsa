@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /private/
+Disallow: /config/
+Disallow: /.env
+Disallow: /.git/
+
+# منع الوصول إلى الملفات الحساسة
+Disallow: /*.env
+Disallow: /*.json
+Disallow: /*.log
+Disallow: /*.sql
+
+# تحديد الخريطة
+Sitemap: https://jaufasnfsa.vercel.app/sitemap.xml

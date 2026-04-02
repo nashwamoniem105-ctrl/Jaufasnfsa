@@ -1,0 +1,34 @@
+# تعطيل الوصول المباشر للملفات الحساسة
+<FilesMatch "\.(env|json|log|sql)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# إضافة رؤوس أمان
+<IfModule mod_headers.c>
+    # منع التخزين المؤقت
+    Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+    
+    # رؤوس الأمان
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# تفعيل HTTPS
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# منع الوصول إلى ملفات النسخ الاحتياطية
+<FilesMatch "\.(bak|backup|old|tmp|~)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
